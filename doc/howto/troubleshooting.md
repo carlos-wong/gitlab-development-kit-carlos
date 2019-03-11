@@ -343,6 +343,26 @@ If building `gpgme` gem fails with an `Undefined symbols for architecture x86_64
 
 You can now run `gdk install` or `bundle` again.
 
+## LoadError due to readline
+
+On macOS, GitLab may fail to start and fail with an error message about
+`libreadline`:
+
+```
+LoadError:
+      dlopen(/Users/janedoe/.rbenv/versions/2.5.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle, 9): Library not loaded: /usr/local/opt/readline/lib/libreadline.7.dylib
+        Referenced from: /Users/janedoe/.rbenv/versions/2.5.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle
+        Reason: image not found - /Users/janedoe/.rbenv/versions/2.5.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle
+```
+
+This happens because the Ruby interpreter was linked with a version of
+the `readline` library that may have been updated on your system. To fix
+the error, reinstall the Ruby interpreter. For example, for environments
+managed with:
+
+- [rbenv](https://github.com/rbenv/rbenv), run `rbenv install 2.5.3`.
+- [RVM](https://rvm.io), run `rvm reinstall ruby-2.5.3`.
+
 ## Delete non-existent migrations from the database
 
 If for some reason you end up having database migrations that no longer exist
@@ -549,6 +569,22 @@ Make sure you don't have `gdk` aliased in your shell.
 For example the git module in [prezto](https://github.com/sorin-ionescu/prezto)
 has an [alias](https://github.com/sorin-ionescu/prezto/blob/master/modules/git/README.md#data)
 for `gdk` that lists killed files.
+
+## Jaeger Issues
+
+If you're seeing errors such as:
+
+`ERROR -- : Failure while sending a batch of spans: Failed to open TCP connection to localhost:14268 (Connection refused - connect(2) for "localhost" port 14268)`
+
+This is most likely because Jaeger is not configured in your `$GDKROOT/Procfile`.
+The easiest way to fix this is by re-creating your `Procfile` and then running 
+a `gdk reconfigure`:
+
+1. `mv Procfile Procfile.old; make Procfile`
+1. `gdk reconfigure`
+
+For more information about Jaeger, visit the [distributed tracing GitLab developer
+documentation](https://docs.gitlab.com/ee/development/distributed_tracing.html).
 
 ## Other problems
 

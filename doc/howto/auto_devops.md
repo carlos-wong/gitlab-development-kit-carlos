@@ -9,18 +9,18 @@ IMPORTANT: These steps are currently only applicable to GitLab employees as it
 depends on our infrastructure. For non-GitLab employees you can see
 [Alternatives](#alternatives) below.
 
-1. Request the required IAM permissions on GCP by [creating an issue in the
-   infrastructure
-   project](https://gitlab.com/gitlab-com/infrastructure/issues/new) and asking
-   for `roles/container.admin` role for `gitlab-internal-153318` GCP project.
-   You will also need to provide them with your email address.
+1. Request GCP permission and SSH tunnel by
+   [creating an access request](https://gitlab.com/gitlab-com/access-requests/issues/new).
+   You can use
+   [this issue](https://gitlab.com/gitlab-com/access-requests/issues/382) as an
+   example.
 
-1. Get access to [the SSH tunnel
-   VM](https://gitlab.com/gitlab-com/infrastructure/issues/4298). You
-   will need to request an account for this by [creating an issue in the
-   infrastructure
-   project](https://gitlab.com/gitlab-com/infrastructure/issues/new) and
-   provide them with your SSH public key.
+   You need to request:
+   
+   - IAM permission on GCP for `roles/container.admin` role for.
+   `gitlab-internal-153318` GCP project
+   - server access for `qa-tunnel.gitlab.info` and provide
+   them with your SSH public key.
 
 1. Once your account has been created, configure your SSH config `~/.ssh/config` to set the correct username.
 
@@ -36,7 +36,7 @@ depends on our infrastructure. For non-GitLab employees you can see
    > Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
    ```
 
-   If you're able to log in, it means you can move on to the next step.
+   If you're able to log in [without entering your passphrase](doc/howto/auto_devops/tips_and_troubleshooting.md#ssh-requires-a-passphrase), it means you can move on to the next step.
 
 1. Set up the GDK for your workstation following [the preparation
    instructions](../prepare.md) and [setup instructions](../set-up-gdk.md)
@@ -52,21 +52,20 @@ IMPORTANT: These steps are currently only applicable to GitLab employees as it
 depends on our infrastructure. For non-GitLab employees you can see
 [Alternatives](#alternatives) below.
 
-Pick two random numbers between 20000 and 29999. These will be used as your subdomain for
-your internet-facing URLs for GitLab and the registry so we choose randomly to avoid
-conflicts. The following steps assuming your numbers are `1337` for
-GitLab and
-`1338` for the registry so you need to change those to your chosen numbers.
+Pick two random numbers between 20000 and 29999. These will be used as your
+subdomain for your internet-facing URLs for GitLab and the registry so we
+choose randomly to avoid conflicts. One number for GitLab `<gitlab-number>`
+and another number for registry `<registry-number>`.
 
 Using your chosen numbers, you will need to reconfigure GDK. From the
 GDK directory, run:
 
 ```
-echo 1337.qa-tunnel.gitlab.info > hostname
+echo <gitlab-number>.qa-tunnel.gitlab.info > hostname
 echo 443 > port
 echo true > https_enabled
 echo true > registry_enabled
-echo 1338.qa-tunnel.gitlab.info > registry_host
+echo <registry-number>.qa-tunnel.gitlab.info > registry_host
 echo 443 > registry_external_port
 gdk reconfigure
 ```
@@ -78,8 +77,8 @@ add the required settings below using `gdk reconfigure`.
 Firstly, add the following lines to the end of `Procfile`:
 
 ```yml
-tunnel_gitlab: ssh -N -R 1337:localhost:$port qa-tunnel.gitlab.info
-tunnel_registry: ssh -N -R 1338:localhost:5000 qa-tunnel.gitlab.info
+tunnel_gitlab: ssh -N -R <gitlab-number>:localhost:$port qa-tunnel.gitlab.info
+tunnel_registry: ssh -N -R <registry-number>:localhost:5000 qa-tunnel.gitlab.info
 ```
 
 Then edit `registry/config.yml` like so:
@@ -87,7 +86,7 @@ Then edit `registry/config.yml` like so:
 ```yml
   auth:
     token:
-      realm: https://1337.qa-tunnel.gitlab.info/jwt/auth
+      realm: https://<gitlab-number>.qa-tunnel.gitlab.info/jwt/auth
 ```
 
 Then start with:
@@ -97,12 +96,13 @@ port=8080 gdk run
 ```
 
 Now you should be able to view your internet accessible application at
-`1337.qa-tunnel.gitlab.info`
+`<gitlab-number>.qa-tunnel.gitlab.info`
 
 Now login as root using the default password and change your password.
 
 IMPORTANT: You should change your root password since it is now internet
-accessible.
+accessible. You should also disable a new users registration feature on
+instance settings page (in the admin panel).
 
 ## Google OAuth2
 
@@ -179,7 +179,7 @@ You should now be ready to run the test. Execute the following command
 in the `qa/` directory:
 
 ```bash
-GITLAB_PASSWORD=<root-user-password> GCLOUD_ZONE=us-central1-a CHROME_HEADLESS=false bin/qa Test::Integration::Kubernetes https://1337.qa-tunnel.gitlab.info/
+GITLAB_PASSWORD=<root-user-password> GCLOUD_ZONE=us-central1-a CHROME_HEADLESS=false bin/qa Test::Integration::Kubernetes https://<gitlab-number>.qa-tunnel.gitlab.info/
 ```
 
 You can also run single tests with RSpec line number arguments. As the
@@ -187,7 +187,7 @@ You can also run single tests with RSpec line number arguments. As the
 `--tag ` argument to override the exclusion:
 
 ```bash
-GITLAB_PASSWORD=<root-user-password> GCLOUD_ZONE=us-central1-a CHROME_HEADLESS=false bin/qa Test::Instance::All https://1337.qa-tunnel.gitlab.info/ --tag orchestrated qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb:71
+GITLAB_PASSWORD=<root-user-password> GCLOUD_ZONE=us-central1-a CHROME_HEADLESS=false bin/qa Test::Instance::All https://<gitlab-number>.qa-tunnel.gitlab.info/ --tag orchestrated qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb:71
 ```
 
 More information about running QA tests can be found in
@@ -198,11 +198,6 @@ above approach is recommended as it will allow you to debug and iterate on the
 spec without rebuilding any docker images and since the above command runs the
 spec in your environment rather than in docker it requires less configuration
 as it inherits your `gcloud` credentials.
-
-TIP: Consider adding `require 'pry'; binding.pry` breakpoint before [the last
-assertion about
-builds](https://gitlab.com/gitlab-org/gitlab-ce/blob/eb146e9abe08c3991b5a54237c24d15312c70ee8/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L61)
-to save yourself from setting up a full working Auto DevOps project.
 
 NOTE: This test will run as the default project ID. To set or override
 the project ID, set `CLOUDSDK_CORE_PROJECT=<gcloud-project-id>`.
@@ -215,6 +210,15 @@ NOTE: [This
 test](https://gitlab.com/gitlab-org/gitlab-ce/blob/eb146e9abe08c3991b5a54237c24d15312c70ee8/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L9)
 does teardown the K8s cluster at the end so after the test finishes it won't be
 possible to run the pipeline again unless you comment this out.
+
+## Tips, Troubleshooting and Useful Commands
+
+Be sure to check out:
+
+- [Auto DevOps - Tips and Troubleshooting](doc/howto/auto_devops/tips_and_troubleshooting.md)
+- [Auto DevOps - Useful Commands](doc/howto/auto_devops/useful_commands.md)
+
+They might save you a lot of time time during work.
 
 ## Technical Details and Alternatives
 
@@ -312,6 +316,126 @@ NOTE: You should ensure your nginx (or other proxy) is configured to allow up
 to 1GB files transferred since the docker images uploaded and downloaded
 can be quite large.
 
+Below you can find an example on how to configure reverse proxy using Nginx
+with a valid SSL certificate generated using Let's Encrypt on Debian.
+
+The example below allows you to install packages from Debian Sid (unstable)
+in order to use latest versions. APT pinning can be configured to make it
+possible to install packages from unstable Debian distribution on a stable
+version of Debian GNU/Linux.
+
+1. Install Nginx
+
+    ```bash
+    sudo apt-get install -t unstable nginx
+    ```
+1. Install `certbot` to manage your certificates easier
+
+    ```bash
+    sudo apt-get install -t unstable certbot python-certbot-nginx
+    ```
+
+1. Configure your domains
+
+    The commands the next point assume you have set up a DNS record for
+    `gdk.example.com` and `registry.example.com` and that both point to the IP
+    address of your VM. You can replace those domain names with anything of
+    your choosing.
+
+1. Request a certificate for your domain or subdomains
+
+    You will need to obtain certificates for GitLab web application and for
+    Container Registry separately. You can do that using following commands:
+
+    ```bash
+    sudo certbot -i nginx -d gdk.example.com -d registry.example.com
+    ```
+
+    certbot will attempt to verify your domain ownership, however you might
+    want to do this manually. You can append `--manual` argument in order to
+    do that.
+
+    ```bash
+    sudo certbot --manual -i nginx -d gdk.example.com -d registry.example.com
+    ```
+
+    It is also possible to generate a wildcard ceriticate if you forcsee the
+    need of using more subdomains than just for GDK and Container Registry:
+
+    ```bash
+    sudo certbot --manual -i nginx -d "*.gdk.example.com" --server https://acme-v02.api.letsencrypt.org/directory
+    ```
+
+    Certificates generated with `--manual` option will not be renewed
+    automatically.
+
+1. Configure Nginx
+
+    Cerbot is going to pre-configure your files, what is useful because you
+    do not need to add certificates manually, however you will need to adjust
+    a few things in the configuration.
+
+    You can find an example of how to configure reverse proxy with SSL
+    termination with Nginx to proxy requests to GitLab Registry and GDK.
+
+    ```
+    server {
+      server_name gdk.gcp.example.com;
+
+      listen [::]:443 ssl ;
+      listen 443 ssl;
+      ssl_certificate /etc/letsencrypt/live/gcp.example.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/gcp.example.com/privkey.pem;
+      ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;
+      ssl_ciphers "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:ECDHE-RSA-DES-CBC3-SHA:AES256-GCM-SHA384:AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4";
+
+      ssl_session_cache    shared:SSL:10m;
+      ssl_session_timeout  30m;
+
+      client_max_body_size 1024m;
+
+      location / {
+        proxy_pass http://127.0.0.1:3000;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Nginx-Proxy true;
+
+        proxy_redirect off;
+      }
+    }
+
+    server {
+      server_name registry.gcp.example.com;
+
+      listen [::]:443 ssl;
+      listen 443 ssl;
+      ssl_certificate /etc/letsencrypt/live/gcp.example.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/gcp.example.com/privkey.pem;
+      ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;
+      ssl_ciphers "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:ECDHE-RSA-DES-CBC3-SHA:AES256-GCM-SHA384:AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4";
+
+      ssl_session_cache    shared:SSL:10m;
+      ssl_session_timeout  30m;
+
+      client_max_body_size 1024m;
+
+      location / {
+        proxy_pass http://127.0.0.1:5000;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Nginx-Proxy true;
+
+        proxy_redirect off;
+      }
+    }
+    ```
+
 #### Why can't we use ngrok or localtunnel?
 
 In theory both of these tools accomplish what we need which is exposing our
@@ -404,24 +528,3 @@ created by these automated tests. The disk name will start with
 `gke-qa-cluster-`. Also note there will likely be many such disks here as our
 automated tests do not clean these up after each run. It is a good idea to
 clean them up yourself while you're on this page.
-
-## Troubleshooting
-
-### The Ingress is never assigned an IP address
-
-If your ingress is never assigned an IP address and you've waited on the cluster
-applications page looking for the IP to appear for several minutes it's quite
-possible that your GCP project has hit a limit of static IP addresses. See [how
-to clean up unused load balancers above](#unused-load-balancers).
-
-### Error due to `Insufficient regional quota` for `DISKS_TOTAL_GB`
-
-When creating a new cluster it will create persistent disks for you. If you are
-running into the following error:
-
-```
-ResponseError: code=403, message=Insufficient regional quota to satisfy request: resource "DISKS_TOTAL_GB"
-```
-
-this would indicate you have reached your limit of persistent disks. See [how
-to clean up unused persistent disks above](#unused-persistent-disks).

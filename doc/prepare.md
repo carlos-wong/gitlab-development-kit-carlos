@@ -4,35 +4,21 @@
 
 ### Prerequisites for all platforms
 
-If you do not have the dependencies below you will experience strange errors
-during installation.
+Make sure you follow all the guidelines and resolve all the dependencies listed below before installing GDK. Otherwise, you will experience strange errors during installation.
 
-1. A non-root Unix user, this can be your normal user but **DO NOT** run the
-   installation as a root user
-1. Ensure the current [`gitlab-ce` Ruby version](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/.ruby-version) is installed with a Ruby version manager
-   ([RVM](https://rvm.io/), [rbenv], [chruby], etc.) and activated (for example by closing and reopening the terminal).
-   **DO NOT** use the system Ruby. You can check the active version with the command `ruby --version`.
-1. Make sure to close and reopen the terminal after installing a Ruby version manager.
-1. Bundler. Install using `gem install bundler -v <version>`, where `<version>` is replaced with the version of bundler found below the text `BUNDLED WITH` at the very bottom of [Gemfile.lock](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/Gemfile.lock)
-1. We recommend using Git version 2.18 or higher.
-1. Node **8.x (LTS)** and Yarn 1.10 or newer. If your package manager does not
-   have Node 8.x or yarn available, visit the official
-   websites for [node] and [yarn] for installation instructions.
-1. Go 1.9.6 or newer. If your package manager does not have up-to-date versions
-   of Go available, visit the official website for [go] for installation instructions.
-1. [Google Chrome] 60 or greater with [ChromeDriver] version 2.33 or greater.
-   Visit the [installation details](https://sites.google.com/a/chromium.org/chromedriver/getting-started) for more details.
-1. PostgreSQL version 9.x, with 9.6 recommended. Using PostgreSQL version 10.x is officially not yet supported.
-1. [GraphicsMagick]
+| Requisite      | Description                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | -----------                                                                                                                                                                                                                                                                                                                                                                 |
+| User account   | Use a **non-root** Unix user to install GDK. This can be your normal user, but **DO NOT** run the installation as a root user.                                                                                                                                                                                                                                              |
+| Ruby           | <p>Use a Ruby version manager ([RVM](https://rvm.io/), [rbenv](https://github.com/rbenv/rbenv), [chruby](https://github.com/postmodern/chruby), etc.) to install the current [`gitlab-ce` Ruby version](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/.ruby-version).</p><p>**DO NOT** use the system Ruby.</p>                                                       |
+| Terminal       | <p>Make sure to close and reopen the Terminal after installing a Ruby version manager to make sure it is activated.</p><p>You can check the active version with the command `ruby --version`.</p>                                                                                                                                                                           |
+| Bundler        | <p>Install the version of Bundler specified in [Gemfile.lock](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/Gemfile.lock). You will find it at the very bottom, right below the text `BUNDLED WITH`.</p><p> Use the command `gem install bundler -v <version>`, replacing `<version>` with the number you found above.</p>                                            |
+| Git            | <p>We recommend using Git version 2.18 or higher.</p><p>git installation is covered in the instructions below</p>                                                                                                                                                                                                                                                           |
+| Node.js        | <p>Node.js **10.x (LTS)** or 8.x (LTS) and Yarn 1.12 or newer.</p><p>Node.js and Yarn installation is covered in the instructions below. If your package manager does not have Node.js 10.x or yarn available, visit the official websites for [Node](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/en/docs/install/) for installation instructions.</p> |
+| Go             | <p>Go 1.10 or newer.</p><p>Go installation is covered in the instructions below. If your package manager does not have up-to-date versions of Go available, visit the official [Go](https://golang.org/doc/install) website for installation instructions.</p>                                                                                                              |
+| Google Chrome  | [Google Chrome](https://www.google.com/chrome/) 60 or greater with [ChromeDriver](https://sites.google.com/a/chromium.org/chromedriver/downloads) version 2.33 or greater. Visit the Chrome Driver [Getting started](https://sites.google.com/a/chromium.org/chromedriver/getting-started) page for more details.                                                           |
+| PostgreSQL     | <p>PostgreSQL version 9.x, with 9.6 recommended. Using PostgreSQL version 10.x is officially not yet supported.</p><p>PostgreSQL installation is covered in the instructions below.</p>                                                                                                                                                                                     |
+| GraphicsMagick | GraphicsMagick installation is covered in the instructions below.                                                                                                                                                                                                                                                                                                           |
 
-[rbenv]: https://github.com/rbenv/rbenv
-[chruby]: https://github.com/postmodern/chruby
-[node]: https://nodejs.org/en/download/
-[yarn]: https://yarnpkg.com/en/docs/install/
-[go]: https://golang.org/doc/install
-[Google Chrome]: https://www.google.com/chrome/
-[ChromeDriver]: https://sites.google.com/a/chromium.org/chromedriver/downloads
-[GraphicsMagick]: http://www.graphicsmagick.org
 
 ### OS X 10.9 (Mavericks), 10.10 (Yosemite), 10.11 (El Capitan), macOS 10.12 (Sierra), macOS 10.13 (High Sierra)
 
@@ -40,28 +26,31 @@ Please read [the prerequisites for all platforms](#prerequisites-for-all-platfor
 
 We are using PostgreSQL 9.6 in the following example. If you want to use another version, please adjust paths accordingly.
 
-#### Install OS X prerequisites using homebrew
+#### Install OS X prerequisites using Homebrew
 
-We recommend manual installation of Node LTS, and not using Homebrew,
-to avoid breaking your development setup when you run `brew upgrade`. 
-Install NodeJS 8.x LTS [manually](https://nodejs.org/en/download/),
-or use a tool like [NVM](https://github.com/creationix/nvm).
-But you can also install NodeJS 8.x LTS using Homebrew and prevent Homebrew from upgrading the node@8 formula by pinning it with `brew pin node@8`.
+[Homebrew](https://brew.sh/) is a package manager for macOS that allows you to easily install programs and tools through the Terminal. Visit their website for installation details.
+
+| **Note on Node.js** |
+| ------------------- |
+| We recommend manual installation of Node.js LTS instead of using Homebrew to avoid breaking your development setup when you run `brew upgrade`. Install Node.js 10.x LTS [manually](https://nodejs.org/en/download/) or use a tool like [NVM](https://github.com/creationix/nvm). If you want to use Homebrew, you can prevent it from upgrading the current Node.js formula by pinning it with `brew pin node@10`. |
 
 ```
-brew install git redis postgresql@9.6 libiconv pkg-config cmake go openssl coreutils re2 graphicsmagick node@8
-brew install yarn --without-node
-brew pin node@8
+brew install git redis postgresql@9.6 libiconv pkg-config cmake go openssl coreutils re2 graphicsmagick node@10 gpg runit
+brew install yarn --ignore-dependencies
+brew link pkg-config
+brew pin node@10
 bundle config build.eventmachine --with-cppflags=-I/usr/local/opt/openssl/include
-echo 'export PATH="/usr/local/opt/postgresql@9.6/bin:/usr/local/opt/node@8/bin:$PATH"' >> ~/.bash_profile
+echo 'export PATH="/usr/local/opt/postgresql@9.6/bin:/usr/local/opt/node@10/bin:$PATH"' >> ~/.bash_profile
 source ~/.bash_profile
 brew cask install google-chrome chromedriver
 ```
 
-#### Install OS X prerequisites using macports
+#### Install OS X prerequisites using MacPorts
+
+[MacPorts](https://www.macports.org/) is another package manager for macOS. Visit their website for installation details.
 
 ```
-sudo port install git redis libiconv postgresql96-server icu pkgconfig cmake nodejs8 go openssl npm5 yarn coreutils re2 GraphicsMagick
+sudo port install git redis libiconv postgresql96-server icu pkgconfig cmake nodejs10 go openssl npm5 yarn coreutils re2 GraphicsMagick runit
 bundle config build.eventmachine --with-cppflags=-I/opt/local/include/openssl
 echo 'export PATH=/opt/local/lib/postgresql96/bin/:$PATH' >> ~/.profile
 source ~/.profile
@@ -75,7 +64,7 @@ source ~/.profile
 
 Please read [the prerequisites for all platforms](#prerequisites-for-all-platforms).
 
-You can install NodeJS 8.x from [nodesource APT servers](https://nodejs.org/en/download/package-manager/#debian-and-ubuntu-based-linux-distributions).
+You can install Node.js 10.x from [nodesource APT servers](https://nodejs.org/en/download/package-manager/#debian-and-ubuntu-based-linux-distributions).
 Install Yarn from [a custom APT server](https://yarnpkg.com/lang/en/docs/install/#debian-stable) as well.
 
 ```
@@ -86,7 +75,9 @@ sudo add-apt-repository ppa:longsleep/golang-backports
 # This PPA contains an up-to-date version of git
 sudo add-apt-repository ppa:git-core/ppa
 sudo apt-get update
-sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server libicu-dev cmake g++ libre2-dev libkrb5-dev libsqlite3-dev golang-1.10-go ed pkg-config graphicsmagick
+sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server \
+  libicu-dev cmake g++ libre2-dev libkrb5-dev libsqlite3-dev golang-1.10-go ed \
+  pkg-config graphicsmagick runit
 ```
 
 Ubuntu 14.04 (Trusty Tahr) doesn't have the `libre2-dev` package available, but
@@ -97,7 +88,8 @@ you can [install re2 manually](https://github.com/google/re2/wiki/Install).
 Please read [the prerequisites for all platforms](#prerequisites-for-all-platforms).
 
 ```
-pacman -S postgresql redis postgresql-libs icu npm ed cmake openssh git go re2 unzip graphicsmagick
+pacman -S postgresql redis postgresql-libs icu npm ed cmake openssh git go re2 \
+  unzip graphicsmagick runit
 ```
 
 #### Debian
@@ -105,7 +97,9 @@ pacman -S postgresql redis postgresql-libs icu npm ed cmake openssh git go re2 u
 Please read [the prerequisites for all platforms](#prerequisites-for-all-platforms).
 
 ```
-sudo apt-get install postgresql postgresql-contrib libpq-dev redis-server libicu-dev cmake g++ libkrb5-dev libre2-dev ed pkg-config graphicsmagick
+sudo apt-get install postgresql postgresql-contrib libpq-dev redis-server \
+  libicu-dev cmake g++ libkrb5-dev libre2-dev ed pkg-config graphicsmagick \
+  runit
 ```
 
 If you are running Debian Experimenal or newer you can install a Go
@@ -130,7 +124,10 @@ sudo dnf module enable postgresql:9.6
 ```
 
 ```
-sudo dnf install postgresql libpqxx-devel postgresql-libs redis libicu-devel nodejs git ed cmake rpm-build gcc-c++ krb5-devel go postgresql-server postgresql-contrib re2 GraphicsMagick
+sudo dnf install postgresql libpqxx-devel postgresql-libs redis libicu-devel \
+  nodejs git ed cmake rpm-build gcc-c++ krb5-devel go postgresql-server \
+  postgresql-contrib re2 GraphicsMagick re2-devel sqlite-devel perl-Digest-SHA \
+  runit
 ```
 
 You may need to install Redis 2.8 or newer manually.
@@ -144,7 +141,9 @@ This is tested on CentOS 6.5:
 ```
 sudo yum install https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-6-x86_64/pgdg-centos96-9.6-3.noarch.rpm
 sudo yum install https://download.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-sudo yum install postgresql96-server postgresql96-devel libicu-devel git cmake gcc-c++ redis ed fontconfig freetype libfreetype.so.6 libfontconfig.so.1 libstdc++.so.6 nodejs npm re2 re2-devel GraphicsMagick
+sudo yum install postgresql96-server postgresql96-devel libicu-devel git cmake \
+  gcc-c++ redis ed fontconfig freetype libfreetype.so.6 libfontconfig.so.1 \
+  libstdc++.so.6 nodejs npm re2 re2-devel GraphicsMagick runit
 
 bundle config build.pg --with-pg-config=/usr/pgsql-9.6/bin/pg_config
 # This example uses Ruby 2.5.3. Substitute with the current version if different.
@@ -176,7 +175,8 @@ sudo zypper dup
 
 sudo zypper install libxslt-devel  postgresql postgresql-devel libpqxx-devel redis libicu-devel nodejs git ed cmake \
          rpm-build gcc-c++ krb5-devel postgresql-server postgresql-contrib \
-         libxml2-devel libxml2-devel-32bit findutils-locate re2 GraphicsMagick
+         libxml2-devel libxml2-devel-32bit findutils-locate re2 GraphicsMagick \
+         runit
 ```
 
 On leap 42.1 you also need:
@@ -235,14 +235,15 @@ Return to the prerequisite installation steps.
 
 **Installing the remaining GDK Tools & resources**
 
-Install NodeJS from source
+Install Node.js from source:
 
+```sh
+curl -O https://nodejs.org/dist/v10.15.0/node-v10.15.0.tar.gz
+tar -zxf node-v10.15.0.tar.gz
+cd node-v10.15.0
 ```
-curl -O https://nodejs.org/dist/v8.12.0/node-v8.12.0.tar.gz
-tar -zxf node-v8.12.0.tar.gz
-cd node-v8.12.0
-```
-Build the NodeJS library. The following instructions are copied from the NodeJS BUILDING.md document:
+
+Build the Node.js library. The following instructions are copied from the Node.js BUILDING.md document:
 
 ```
 sudo apt-get install build-essential
@@ -274,7 +275,8 @@ sudo apt-get install software-properties-common python-software-properties
 # This PPA contains an up-to-date version of Go
 sudo apt-add-repository -y ppa:ubuntu-lxc/lxd-stable
 sudo apt-get update
-sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server libicu-dev cmake g++ libkrb5-dev libre2-dev golang ed pkg-config
+sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server \
+  libicu-dev cmake g++ libkrb5-dev libre2-dev golang ed pkg-config runit
 ```
 
 Start the PostgreSQL database
