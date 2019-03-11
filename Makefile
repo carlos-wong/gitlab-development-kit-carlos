@@ -259,7 +259,7 @@ gitlab/.git/pull:
 		git checkout -- Gemfile.lock db/schema.rb && \
 		git stash && \
 		git checkout master && \
-		git pull --ff-only
+		git pull --ff-only origin master
 
 gitlab-shell/.git/pull:
 	cd ${gitlab_development_root}/gitlab-shell && \
