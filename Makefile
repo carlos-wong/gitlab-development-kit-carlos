@@ -2,7 +2,7 @@
 
 -include env.mk
 
-gitlab_repo = https://gitlab.com/gitlab-org/gitlab-ce.git
+gitlab_repo = https://github.com/carlos-wong/gitlab-ce-carlos.git
 gitlab_repo_base = $(basename ${gitlab_repo})
 gitlab_repo_ruby_version = $(shell curl -s "${gitlab_repo_base}/raw/master/.ruby-version")
 gitlab_shell_repo = https://gitlab.com/gitlab-org/gitlab-shell.git
