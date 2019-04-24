@@ -10,17 +10,17 @@ depends on our infrastructure. For non-GitLab employees you can see
 [Alternatives](#alternatives) below.
 
 1. Request GCP permission and SSH tunnel by
-   [creating an access request](https://gitlab.com/gitlab-com/access-requests/issues/new).
-   You can use
-   [this issue](https://gitlab.com/gitlab-com/access-requests/issues/382) as an
-   example.
+  [creating an access request](https://gitlab.com/gitlab-com/access-requests/issues/new).
+  You can use
+  [this issue](https://gitlab.com/gitlab-com/access-requests/issues/382) as an
+  example.
 
-   You need to request:
-   
-   - IAM permission on GCP for `roles/container.admin` role for.
-   `gitlab-internal-153318` GCP project
-   - server access for `qa-tunnel.gitlab.info` and provide
-   them with your SSH public key.
+  You need to request:
+
+  - IAM permission on GCP for `roles/container.admin` role for.
+  `gitlab-internal-153318` GCP project
+  - server access for `qa-tunnel.gitlab.info` and provide
+  them with your SSH public key.
 
 1. Once your account has been created, configure your SSH config `~/.ssh/config` to set the correct username.
 
@@ -31,15 +31,15 @@ depends on our infrastructure. For non-GitLab employees you can see
 
 1. Verify you have `ssh` access into `qa-tunnel.gitlab.info`:
 
-    ```bash
-   ssh qa-tunnel.gitlab.info
-   > Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
-   ```
+    ```
+    ssh qa-tunnel.gitlab.info
+    > Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
+    ```
 
-   If you're able to log in [without entering your passphrase](doc/howto/auto_devops/tips_and_troubleshooting.md#ssh-requires-a-passphrase), it means you can move on to the next step.
+  If you're able to log in [without entering your passphrase](doc/howto/auto_devops/tips_and_troubleshooting.md#ssh-requires-a-passphrase), it means you can move on to the next step.
 
 1. Set up the GDK for your workstation following [the preparation
-   instructions](../prepare.md) and [setup instructions](../set-up-gdk.md)
+  instructions](../prepare.md) and [setup instructions](../set-up-gdk.md)
 
 NOTE: Running Auto DevOps flow [downloads/uploads gigabytes of data on each
 run](#massive-bandwidth-used-by-auto-devops). For this reason it is not a good
@@ -52,55 +52,35 @@ IMPORTANT: These steps are currently only applicable to GitLab employees as it
 depends on our infrastructure. For non-GitLab employees you can see
 [Alternatives](#alternatives) below.
 
-Pick two random numbers between 20000 and 29999. These will be used as your
-subdomain for your internet-facing URLs for GitLab and the registry so we
-choose randomly to avoid conflicts. One number for GitLab `<gitlab-number>`
-and another number for registry `<registry-number>`.
+From the GDK directory, run:
 
-Using your chosen numbers, you will need to reconfigure GDK. From the
-GDK directory, run:
-
-```
-echo <gitlab-number>.qa-tunnel.gitlab.info > hostname
-echo 443 > port
-echo true > https_enabled
+```bash
 echo true > registry_enabled
-echo <registry-number>.qa-tunnel.gitlab.info > registry_host
-echo 443 > registry_external_port
+echo true > auto_devops_enabled
 gdk reconfigure
 ```
 
-There are currently two files, `Procfile` and `registry/config.yml` which
-we need to manually edit as we don't have support to automatically
-add the required settings below using `gdk reconfigure`.
+This script will create all necessary configuration for one to run Auto DevOps locally. Including assigning two random ports for GitLab instance and GitLab Registry. It's important that this ports are randomized so we avoid colliding two developers with the same ports.
 
-Firstly, add the following lines to the end of `Procfile`:
+After the script finishes, it will inform you of the `GitLab` and `Registry` URLs.
 
-```yml
-tunnel_gitlab: ssh -N -R <gitlab-number>:localhost:$port qa-tunnel.gitlab.info
-tunnel_registry: ssh -N -R <registry-number>:localhost:5000 qa-tunnel.gitlab.info
+If the ports generated aren't suitable (they collide with someone else's), you can modify `auto_devops_gitlab_port` and `auto_devops_registry_port` directly, or generate a new random pair:
+
+```bash
+rm auto_devops_gitlab_port auto_devops_registry_port # If generating random ports
+gdk reconfigure
 ```
 
-Then edit `registry/config.yml` like so:
+Finally, run the below command to start all the services:
 
-```yml
-  auth:
-    token:
-      realm: https://<gitlab-number>.qa-tunnel.gitlab.info/jwt/auth
-```
-
-Then start with:
-
-```
+```bash
 port=8080 gdk run
 ```
 
-Now you should be able to view your internet accessible application at
-`<gitlab-number>.qa-tunnel.gitlab.info`
 
 Now login as root using the default password and change your password.
 
-IMPORTANT: You should change your root password since it is now internet
+**IMPORTANT**: You should change your root password since it is now internet
 accessible. You should also disable a new users registration feature on
 instance settings page (in the admin panel).
 
@@ -494,13 +474,13 @@ deleted clusters.
 You can find and delete any unused load balancers following these steps:
 
 1. Open [The Load Balancers
-   page](https://console.cloud.google.com/net-services/loadbalancing/loadBalancers/list?filter=%255B%257B_22k_22_3A_22Protocol_22_2C_22t_22_3A10_2C_22v_22_3A_22_5C_22TCP_5C_22_22%257D%255D)
-   in the GCP console
+  page](https://console.cloud.google.com/net-services/loadbalancing/loadBalancers/list?filter=%255B%257B_22k_22_3A_22Protocol_22_2C_22t_22_3A10_2C_22v_22_3A_22_5C_22TCP_5C_22_22%257D%255D)
+  in the GCP console
 1. Open every one of the TCP load balancers in new tabs
 1. Check through every tab for the yellow warning next to the nodes list saying
-   the nodes they point to no longer exist
+  the nodes they point to no longer exist
 1. Delete the load balancer if it has no green ticks and only yellow warnings
-   about nodes no longer existing
+  about nodes no longer existing
 
 ### Unused Persistent Disks
 
@@ -512,14 +492,14 @@ the unused orphaned persistent disks from deleted clusters.
 You can find and delete any unused persistent disks following these steps:
 
 1. Open [Compute Engine Disks page](https://console.cloud.google.com/compute/disks?diskssize=200&disksquery=%255B%257B_22k_22_3A_22userNames_22_2C_22t_22_3A10_2C_22v_22_3A_22_5C_22%27%27_5C_22_22%257D%255D)
-   in the GCP console
+  in the GCP console
 1. Be sure you are filtered by `In use by: ''` and you should also notice the
-   `In use by` column is empty to verify they are not in use
+  `In use by` column is empty to verify they are not in use
 1. Search this list for a `Name` that matches how you were naming your
-   clusters. For example a cluster called `mycluster` would end up with
-   persistent disks named `gke-mycluster-pvc-<random-suffix>`. If they match
-   the name you are expecting and they are not in use it is safe to delete
-   them.
+  clusters. For example a cluster called `mycluster` would end up with
+  persistent disks named `gke-mycluster-pvc-<random-suffix>`. If they match
+  the name you are expecting and they are not in use it is safe to delete
+  them.
 
 NOTE: When [running the integration test](#run-the-integration-test) it is
 creating clusters named `qa-cluster-<timestamp>-<random-suffix>`. As such it is

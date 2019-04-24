@@ -15,7 +15,7 @@ postgresql: exec support/postgresql-signal-wrapper postgres -D /home/git/postgre
 # Geo
 #
 #postgresql-geo: exec support/postgresql-signal-wrapper postgres -D /home/git/postgresql-geo/data -k /home/git/postgresql-geo -h ''
-#geo-cursor: exec /usr/bin/env RAILS_ENV=development RAILS_RELATIVE_URL_ROOT=$relative_url_root support/exec-cd gitlab/bin ./geo_log_cursor
+#geo-cursor: exec /usr/bin/env RAILS_ENV=development RAILS_RELATIVE_URL_ROOT=$relative_url_root support/geo-logcursor
 
 # Backend services
 #
@@ -45,3 +45,8 @@ jaeger: exec jaeger/jaeger-VERSION/jaeger-all-in-one --memory.max-traces 512
 #sshd: exec /usr/sbin/sshd -e -D -f /home/git/openssh/sshd_config
 #nginx: exec nginx -p /home/git/nginx -c conf/nginx.conf
 #elasticsearch: exec elasticsearch/bin/elasticsearch
+
+# Tunneling
+#
+#tunnel_gitlab: ssh -N -R $auto_devops_gitlab_port:localhost:$port qa-tunnel.gitlab.info
+#tunnel_registry: ssh -N -R $auto_devops_registry_port:localhost:5000 qa-tunnel.gitlab.info

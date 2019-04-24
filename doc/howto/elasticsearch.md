@@ -20,19 +20,19 @@ run db` processes.
 
 ## Setup
 
-1. Go to **Admin > Application Settings** to enable Elasticsearch.
+1. Go to **Admin Area > Settings > Integrations** to enable Elasticsearch.
 
 1. Start Elasticsearch by either running `elasticsearch` in a new terminal, or
    by adding it to your `Procfile`:
 
-    ```
-    elasticsearch: elasticsearch
-    ```
+   ```
+   elasticsearch: elasticsearch
+   ```
 
 1. Be sure to restart the GDK's `foreman` instance if it's running.
 
 1. Perform a manual update of the Elasticsearch indexes:
 
-    ```sh
-    cd gitlab-ee && bundle exec rake gitlab:elastic:index
-    ```
+   ```sh
+   cd gitlab && bundle exec rake gitlab:elastic:index
+   ```

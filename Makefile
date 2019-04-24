@@ -25,17 +25,19 @@ postgres_dir = $(abspath ./postgresql)
 postgres_replica_dir = $(abspath ./postgresql-replica)
 postgres_geo_dir = $(abspath ./postgresql-geo)
 postgres_data_dir = ${postgres_dir}/data
-hostname = $(shell cat hostname 2>/dev/null || echo 'localhost')
-port = $(shell cat port 2>/dev/null || echo '3000')
-https = $(shell cat https_enabled 2>/dev/null || echo 'false')
+auto_devops_enabled = $(shell cat auto_devops_enabled 2>/dev/null || echo 'false')
+auto_devops_gitlab_port = $(shell cat auto_devops_gitlab_port)
+auto_devops_registry_port = $(shell cat auto_devops_registry_port)
+hostname = $(if $(filter true,$(auto_devops_enabled)),"$(auto_devops_gitlab_port).qa-tunnel.gitlab.info",$(shell cat hostname 2>/dev/null || echo 'localhost'))
+port = $(shell (${auto_devops_enabled} && echo '443') || cat port 2>/dev/null || echo '3000')
+https = $(shell (${auto_devops_enabled} && echo 'true') || cat https_enabled 2>/dev/null || echo 'false')
 relative_url_root = $(shell cat relative_url_root 2>/dev/null || echo '')
 username = $(shell whoami)
 sshd_bin = $(shell which sshd)
-git_bin = $(shell which git)
 webpack_port = $(shell cat webpack_port 2>/dev/null || echo '3808')
 registry_enabled = $(shell cat registry_enabled 2>/dev/null || echo 'false')
-registry_host = $(shell cat registry_host 2>/dev/null || echo '127.0.0.1')
-registry_external_port = $(shell cat registry_external_port 2>/dev/null || echo '5000')
+registry_host = $(if $(filter true,$(auto_devops_enabled)),"$(auto_devops_registry_port).qa-tunnel.gitlab.info",$(shell cat registry_host 2>/dev/null || echo '127.0.0.1'))
+registry_external_port = $(if $(filter true,$(auto_devops_enabled)),443,$(shell cat registry_external_port 2>/dev/null || echo '5000'))
 registry_port = $(shell cat registry_port 2>/dev/null || echo '5000')
 gitlab_from_container = $(shell [ "$(shell uname)" = "Linux" ] && echo 'localhost' || echo 'docker.for.mac.localhost')
 postgresql_port = $(shell cat postgresql_port 2>/dev/null || echo '5432')
@@ -46,7 +48,7 @@ gitlab_pages_port = $(shell cat gitlab_pages_port 2>/dev/null || echo '3010')
 rails_bundle_install_cmd := bundle install --jobs 4 --without production $(if $(shell mysql_config --libs 2>/dev/null),--with,--without) mysql
 elasticsearch_version = 6.5.1
 elasticsearch_tar_gz_sha1 = 5903e1913a7c96aad96a8227517c40490825f672
-ruby_version = UNKNOWN
+ruby_version = $(shell ruby -e 'puts RUBY_VERSION')
 workhorse_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_WORKHORSE_VERSION")
 gitlab_shell_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_SHELL_VERSION")
 gitaly_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITALY_SERVER_VERSION")
@@ -54,6 +56,9 @@ pages_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_r
 tracer_build_tags = tracer_static tracer_static_jaeger
 jaeger_server_enabled ?= true
 jaeger_version = 1.10.1
+ifeq ($(shallow_clone),true)
+git_depth_param = --depth=1
+endif
 
 all: gitlab-setup gitlab-shell-setup gitlab-workhorse-setup gitlab-pages-setup support-setup gitaly-setup prom-setup object-storage-setup
 
@@ -73,15 +78,20 @@ check-go-version:
 gitlab-setup: check-ruby-version gitlab/.git gitlab-config bundler .gitlab-bundle yarn .gitlab-yarn .gettext
 
 gitlab/.git:
-	git clone ${gitlab_repo} gitlab
+	git clone ${git_depth_param} ${gitlab_repo} gitlab
 
 gitlab-config: gitlab/config/gitlab.yml gitlab/config/database.yml gitlab/config/unicorn.rb gitlab/config/resque.yml gitlab/public/uploads gitlab/config/puma.rb
 
-gitlab/config/gitlab.yml: gitlab/config/gitlab.yml.example
-	bin/safe-sed "$@" \
-		-e "s|/home/git|${gitlab_development_root}|g"\
-		-e "s|/usr/bin/git|${git_bin}|"\
-		"$<"
+auto_devops_enabled:
+	echo 'false' > $@
+
+auto_devops_gitlab_port:
+	awk -v min=20000 -v max=24999 'BEGIN{srand(); print int(min+rand()*(max-min+1))}' > $@
+
+auto_devops_registry_port: auto_devops_gitlab_port
+	expr ${auto_devops_gitlab_port} + 5000 > $@
+
+gitlab/config/gitlab.yml: support/templates/gitlab.yml.erb auto_devops_enabled auto_devops_gitlab_port auto_devops_registry_port
 	hostname=${hostname} port=${port} relative_url_root=${relative_url_root}\
 		https=${https}\
 		webpack_port=${webpack_port}\
@@ -89,7 +99,7 @@ gitlab/config/gitlab.yml: gitlab/config/gitlab.yml.example
 		registry_enabled=${registry_enabled} registry_port=${registry_port}\
 		object_store_enabled=${object_store_enabled} object_store_port=${object_store_port}\
 		gitlab_pages_port=${gitlab_pages_port}\
-		support/edit-gitlab.yml gitlab/config/gitlab.yml
+		support/edit-gitlab-yml gitlab/config/gitlab.yml
 
 gitlab/config/database.yml: database.yml.example
 	bin/safe-sed "$@" \
@@ -153,7 +163,7 @@ symlink-gitlab-shell:
 	support/symlink gitlab-shell ${gitlab_shell_clone_dir}
 
 ${gitlab_shell_clone_dir}/.git:
-	git clone ${gitlab_shell_repo} ${gitlab_shell_clone_dir}
+	git clone ${git_depth_param} ${gitlab_shell_repo} ${gitlab_shell_clone_dir}
 
 gitlab-shell/config.yml: gitlab-shell/config.yml.example
 	bin/safe-sed "$@" \
@@ -175,10 +185,10 @@ gitlab-shell/.gitlab_shell_secret:
 gitaly-setup: gitaly/bin/gitaly gitaly/config.toml ${gitaly_proto_clone_dir}/.git
 
 ${gitaly_clone_dir}/.git:
-	git clone --quiet ${gitaly_repo} ${gitaly_clone_dir}
+	git clone ${git_depth_param} --quiet ${gitaly_repo} ${gitaly_clone_dir}
 
 ${gitaly_proto_clone_dir}/.git:
-	git clone --quiet ${gitaly_proto_repo} ${gitaly_proto_clone_dir}
+	git clone ${git_depth_param} --quiet ${gitaly_proto_repo} ${gitaly_proto_clone_dir}
 
 gitaly/config.toml: $(gitaly_clone_dir)/config.toml.example
 	bin/safe-sed "$@" \
@@ -200,7 +210,7 @@ prom-setup:
 gitlab-docs-setup: gitlab-docs/.git gitlab-docs-bundle gitlab-docs/nanoc.yaml symlink-gitlab-docs
 
 gitlab-docs/.git:
-	git clone ${gitlab_docs_repo} gitlab-docs
+	git clone ${git_depth_param} ${gitlab_docs_repo} gitlab-docs
 
 gitlab-docs/.git/pull:
 	cd gitlab-docs && \
@@ -246,7 +256,7 @@ update: ensure-postgres-running unlock-dependency-installers gitlab-shell-update
 ensure-postgres-running:
 	@test -f ${postgres_data_dir}/postmaster.pid || \
 	test "${IGNORE_INSTALL_WARNINGS}" = "true" || \
-	(echo "WARNING: Postgres is not running.  Run 'gdk run db' or 'gdk run' in another shell." && echo "WARNING: Hit <ENTER> to ignore or <CTRL-C> to quit." && read v;)
+	(echo "WARNING: Postgres is not running. Run 'gdk run db' or 'gdk run' in another shell." && echo "WARNING: Hit <ENTER> to ignore or <CTRL-C> to quit." && read v;)
 
 gitlab-update: ensure-postgres-running gitlab/.git/pull gitlab-setup
 	cd ${gitlab_development_root}/gitlab && \
@@ -301,8 +311,16 @@ support-setup: .ruby-version foreman Procfile redis gitaly-setup jaeger-setup po
 	@echo "*********************************************"
 	cat HELP
 	@echo "*********************************************"
+	@if ${auto_devops_enabled}; then \
+		echo "Tunnel URLs"; \
+		echo ""; \
+		echo "GitLab: https://${hostname}"; \
+		echo "Registry: https://${registry_host}"; \
+		echo "*********************************************"; \
+	fi
 
-Procfile: Procfile.example
+
+Procfile: Procfile.example auto_devops_enabled auto_devops_gitlab_port auto_devops_registry_port
 	bin/safe-sed "$@" \
 		-e "s|/home/git|${gitlab_development_root}|g"\
 		-e "s|/usr/sbin/sshd|${sshd_bin}|"\
@@ -311,6 +329,8 @@ Procfile: Procfile.example
 		-e "s|-listen-http \":3010\" |-listen-http \":${gitlab_pages_port}\" -artifacts-server http://${hostname}:${port}/api/v4 |"\
 		-e "s|jaeger-VERSION|jaeger-${jaeger_version}|" \
 		-e "$(if $(filter false,$(jaeger_server_enabled)),/^jaeger:/s/^/#/,/^#\s*jaeger:/s/^#\s*//)" \
+		-e "$(if $(filter true,$(auto_devops_enabled)),s|#tunnel_gitlab:.*|tunnel_gitlab: ssh -N -R $(auto_devops_gitlab_port):localhost:\$$port qa-tunnel.gitlab.info|g,/^#tunnel_gitlab:/s/^//)" \
+		-e "$(if $(filter true,$(auto_devops_enabled)),s|#tunnel_registry:.*|tunnel_registry: ssh -N -R ${auto_devops_registry_port}:localhost:${registry_port} qa-tunnel.gitlab.info|g,/^#tunnel_registry:/s/^//)" \
 		"$<"
 	if [ -f .vagrant_enabled ]; then \
 		echo "0.0.0.0" > host; \
@@ -448,10 +468,10 @@ gitlab-workhorse-clean-bin:
 
 .PHONY: gitlab-workhorse/bin/gitlab-workhorse
 gitlab-workhorse/bin/gitlab-workhorse: check-go-version ${gitlab_workhorse_clone_dir}/.git
-	GOPATH=${gitlab_development_root}/gitlab-workhorse go install -tags "${tracer_build_tags}" gitlab.com/gitlab-org/gitlab-workhorse/...
+	GOPATH=${gitlab_development_root}/gitlab-workhorse GOBIN=${gitlab_development_root}/gitlab-workhorse/bin go install -tags "${tracer_build_tags}" gitlab.com/gitlab-org/gitlab-workhorse/...
 
 ${gitlab_workhorse_clone_dir}/.git:
-	git clone ${gitlab_workhorse_repo} ${gitlab_workhorse_clone_dir}
+	git clone ${git_depth_param} ${gitlab_workhorse_repo} ${gitlab_workhorse_clone_dir}
 
 gitlab-workhorse/.git/pull:
 	cd ${gitlab_workhorse_clone_dir} && \
@@ -468,10 +488,10 @@ gitlab-pages-clean-bin:
 
 .PHONY: gitlab-pages/bin/gitlab-pages
 gitlab-pages/bin/gitlab-pages: check-go-version ${gitlab_pages_clone_dir}/.git
-	GOPATH=${gitlab_development_root}/gitlab-pages go install gitlab.com/gitlab-org/gitlab-pages
+	GOPATH=${gitlab_development_root}/gitlab-pages GOBIN=${gitlab_development_root}/gitlab-pages/bin go install gitlab.com/gitlab-org/gitlab-pages
 
 ${gitlab_pages_clone_dir}/.git:
-	git clone ${gitlab_pages_repo} ${gitlab_pages_clone_dir}
+	git clone ${git_depth_param} ${gitlab_pages_repo} ${gitlab_pages_clone_dir}
 
 gitlab-pages/.git/pull:
 	cd ${gitlab_pages_clone_dir} && \
@@ -544,9 +564,15 @@ registry-setup: registry/storage registry/config.yml localhost.crt
 registry/storage:
 	mkdir -p $@
 
-registry/config.yml:
+registry/config.yml: auto_devops_enabled
 	cp registry/config.yml.example $@
-	gitlab_host=${gitlab_from_container} gitlab_port=${port} registry_port=${registry_port} support/edit-registry-config.yml $@
+	if ${auto_devops_enabled}; then \
+		protocol='https' gitlab_host=${hostname} gitlab_port=${port} registry_port=${registry_port} \
+		support/edit-registry-config.yml $@; \
+	else \
+		gitlab_host=${gitlab_from_container} gitlab_port=${port} registry_port=${registry_port} \
+		support/edit-registry-config.yml $@; \
+	fi
 
 elasticsearch-setup: elasticsearch/bin/elasticsearch
 
@@ -569,13 +595,13 @@ minio/data/%:
 pry:
 	grep '^#rails-web:' Procfile || (printf ',s/^rails-web/#rails-web/\nwq\n' | ed -s Procfile)
 	@echo ""
-	@echo "Commented out 'rails-web' line in the Procfile.  Use 'make pry-off' to reverse."
+	@echo "Commented out 'rails-web' line in the Procfile. Use 'make pry-off' to reverse."
 	@echo "You can now use Pry for debugging by using 'gdk run' in one terminal, and 'gdk run thin' in another."
 
 pry-off:
 	grep '^rails-web:' Procfile || (printf ',s/^#rails-web/rails-web/\nwq\n' | ed -s Procfile)
 	@echo ""
-	@echo "Re-enabled 'rails-web' in the Procfile.  Debugging with Pry will no longer work."
+	@echo "Re-enabled 'rails-web' in the Procfile. Debugging with Pry will no longer work."
 
 ifeq ($(jaeger_server_enabled),true)
 .PHONY: jaeger-setup
@@ -613,7 +639,27 @@ clean-config:
 	gitaly/config.toml \
 	nginx/conf/nginx.conf \
 	registry/config.yml \
-	jaeger \
+	jaeger
+
+touch-examples:
+	touch \
+	$(gitaly_clone_dir)/config.toml.example \
+	Procfile.example \
+	database.yml.example \
+	database_geo.yml.example \
+	gitlab-shell/config.yml.example \
+	gitlab-workhorse/config.toml.example \
+	gitlab/config/database.yml.example \
+	gitlab/config/puma.example.development.rb \
+	gitlab/config/unicorn.rb.example.development \
+	grafana/grafana.ini.example \
+	influxdb/influxdb.conf.example \
+	nginx/conf/nginx.conf.example \
+	openssh/sshd_config.example \
+	redis/redis.conf.example \
+	redis/resque.yml.example \
+	registry/config.yml.example \
+	support/templates/gitlab.yml.erb
 
 unlock-dependency-installers:
 	rm -f \
@@ -621,3 +667,25 @@ unlock-dependency-installers:
 	.gitlab-shell-bundle \
 	.gitlab-yarn \
 	.gettext \
+
+.PHONY: verify
+verify: verify-editorconfig
+
+.PHONY: verify-editorconfig
+verify-editorconfig: install-eclint
+	eclint check $$(git ls-files) || (echo "editorconfig check failed. Please run \`make correct\`" && exit 1)
+
+.PHONY: correct
+correct: correct-editorconfig
+
+.PHONY: correct-editorconfig
+correct-editorconfig: install-eclint
+	eclint fix $$(git ls-files)
+
+.PHONY: install-eclint
+install-eclint:
+	# Some distros come with `npm`, some with `yarn`
+	# So, we attempt to install eclint with either package manager
+	(command -v eclint > /dev/null) || \
+	((command -v npm > /dev/null) && npm install -g eclint) || \
+	((command -v yarn > /dev/null) && yarn global add eclint)
