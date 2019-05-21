@@ -5,9 +5,21 @@
 There may be times when your local libraries that are used to build some gems'
 native extensions are updated (i.e., `libicu`), thus resulting in errors like:
 
-```
+```shell
 rails-background-jobs.1 | /home/user/.rvm/gems/ruby-2.3.0/gems/activesupport-4.2.5.2/lib/active_support/dependencies.rb:274:in 'require': libicudata.so
 cannot open shared object file: No such file or directory - /home/user/.rvm/gems/ruby-2.3.0/gems/charlock_holmes-0.7.3/lib/charlock_holmes/charlock_holmes.so (LoadError)
+```
+
+```shell
+cd /home/user/gitlab-development-kit/gitlab && bundle exec rake gettext:compile > /home/user/gitlab-development-kit/gettext.log 2>&1
+make: *** [.gettext] Error 1
+```
+
+```shell
+rake aborted!
+LoadError: dlopen(/home/user/.rbenv/versions/2.6.3/lib/ruby/gems/2.5.0/gems/charlock_holmes-0.7.6/lib/charlock_holmes/charlock_holmes.bundle, 9): Library not loaded: /usr/local/opt/icu4c/lib/libicudata.63.1.dylib
+  Referenced from: /home/user/.rbenv/versions/2.6.3/lib/ruby/gems/2.5.0/gems/charlock_holmes-0.7.6/lib/charlock_holmes/charlock_holmes.bundle
+  Reason: image not found - /home/user/.rbenv/versions/2.6.3/lib/ruby/gems/2.5.0/gems/charlock_holmes-0.7.6/lib/charlock_holmes/charlock_holmes.bundle
 ```
 
 In that case, find the offending gem and use `pristine` to rebuild its native
@@ -16,6 +28,35 @@ extensions:
 ```bash
 gem pristine charlock_holmes
 ```
+
+## An error occurred while installing mysql2
+
+```shell
+An error occurred while installing mysql2 (0.4.10), and Bundler cannot continue.
+Make sure that `gem install mysql2 -v '0.4.10' --source 'https://rubygems.org/'` succeeds before bundling.
+```
+
+```shell
+Installing mysql2 0.4.10 with native extensions
+Gem::Ext::BuildError: ERROR: Failed to build gem native extension.
+
+    current directory: /home/user/.rbenv/versions/2.6.3/lib/ruby/gems/2.6.0/gems/mysql2-0.4.10/ext/mysql2
+/home/user/.rbenv/versions/2.6.3/bin/ruby -I /home/user/.rbenv/versions/2.6.3/lib/ruby/2.6.0 -r
+./siteconf20190510-96137-15ejlj6.rb extconf.rb --with-ldflags\=-L/usr/local/opt/openssl/lib\
+--with-cppflags\=-I/usr/local/opt/openssl/include
+checking for rb_absint_size()... *** extconf.rb failed ***
+Could not create Makefile due to some reason, probably lack of necessary
+libraries and/or headers.  Check the mkmf.log file for more details.  You may
+need configuration options.
+```
+
+The solution here is:
+
+```shell
+bundle config --global build.mysql2 --with-opt-dir="$(brew --prefix openssl)"
+```
+
+And running `bundle` again will work.
 
 ## `charlock_holmes` `0.7.x` cannot be installed on macOS Sierra
 
@@ -350,9 +391,9 @@ On macOS, GitLab may fail to start and fail with an error message about
 
 ```
 LoadError:
-    dlopen(/Users/janedoe/.rbenv/versions/2.5.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle, 9): Library not loaded: /usr/local/opt/readline/lib/libreadline.7.dylib
-        Referenced from: /Users/janedoe/.rbenv/versions/2.5.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle
-        Reason: image not found - /Users/janedoe/.rbenv/versions/2.5.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle
+    dlopen(/Users/janedoe/.rbenv/versions/2.6.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle, 9): Library not loaded: /usr/local/opt/readline/lib/libreadline.7.dylib
+        Referenced from: /Users/janedoe/.rbenv/versions/2.6.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle
+        Reason: image not found - /Users/janedoe/.rbenv/versions/2.6.3/lib/ruby/2.5.0/x86_64-darwin15/readline.bundle
 ```
 
 This happens because the Ruby interpreter was linked with a version of
@@ -360,8 +401,8 @@ the `readline` library that may have been updated on your system. To fix
 the error, reinstall the Ruby interpreter. For example, for environments
 managed with:
 
-- [rbenv](https://github.com/rbenv/rbenv), run `rbenv install 2.5.3`.
-- [RVM](https://rvm.io), run `rvm reinstall ruby-2.5.3`.
+- [rbenv](https://github.com/rbenv/rbenv), run `rbenv install 2.6.3`.
+- [RVM](https://rvm.io), run `rvm reinstall ruby-2.6.3`.
 
 ## Delete non-existent migrations from the database
 
