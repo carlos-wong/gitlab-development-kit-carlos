@@ -1,10 +1,12 @@
 .DS_Store
+.idea
 gdk-ce/**
 gdk-ee/**
 gitlab-development-kit/**
 /gitlab-shell/
 /gitlab-shell
 /.ssh/
+/.env
 /repositories
 !/repositories/.gitkeep
 /gitlab/
@@ -43,7 +45,9 @@ gitlab-development-kit/**
 /webpack_port
 /.ruby-version
 /.ruby-gemset
-/localhost.*
+*.key
+*.crt
+*.pem
 /influxdb/
 /grafana/
 /openssh/*_key
@@ -67,6 +71,7 @@ gitlab-development-kit/**
 /.gdk-install-root
 /builds
 /gitaly/
+praefect_enabled
 /gitlab-workhorse/config.toml
 /gitlab-workhorse/.cache
 /go-gitlab-shell
@@ -90,5 +95,12 @@ gitlab-development-kit/**
 /auto_devops_enabled
 /auto_devops_gitlab_port
 /auto_devops_registry_port
+/google_oauth_client_id
+/google_oauth_client_secret
 /jaeger-artifacts/
 /jaeger/
+/gdk.yml
+/services/
+/sv/
+/log/
+/gitlab-elasticsearch-indexer

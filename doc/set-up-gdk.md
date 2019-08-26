@@ -106,13 +106,19 @@ Start GitLab and all required services:
 gdk run
 ```
 
-To start only the databases use:
+To start only the database services, use:
 
 ```sh
 gdk run db
 ```
 
-To start only the app (assuming the DBs are already running):
+To start database services and gitaly, use:
+
+```sh
+gdk run db gitaly
+```
+
+To start only the app (assuming the database services are already running), use:
 
 ```sh
 gdk run app
@@ -141,8 +147,10 @@ You can also override the host name used by the Rails instance (specified by the
  gdk reconfigure
  ```
 
-If you want to work on GitLab CI you will need to install [GitLab Runner](https://gitlab.com/gitlab-org/gitlab-runner).
-
 To enable the OpenLDAP server, see the OpenLDAP instructions in this [README](./howto/ldap.md).
 
 After installation [learn how to use GDK](./howto/README.md).
+
+### Enabling GitLab CI/CD in GDK
+
+If you want to work on GitLab CI/CD, see [Using GitLab Runner with GDK](howto/runner.md).

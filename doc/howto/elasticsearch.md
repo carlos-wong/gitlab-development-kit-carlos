@@ -6,10 +6,14 @@ environment.
 
 ## Installation
 
-1. Install Java 8 (Elasticsearch dependency)
+1. Install OpenJDK 8 (Elasticsearch dependency)
 
-   If needed, install Java 8 (JRE). For macOS you can download it from
-https://www.java.com.
+    - You can get a prebuilt OpenJDK Binary for free from [AdoptOpenJDK](https://adoptopenjdk.net)
+    - You can also install OpenJDK using [Homebrew](https://github.com/AdoptOpenJDK/homebrew-openjdk)
+    ```
+    brew tap AdoptOpenJDK/openjdk
+    brew cask install adoptopenjdk8
+    ```
 
 1. Uncomment ElasticSearch in your Procfile
 
@@ -19,6 +23,8 @@ Procfile to make ElasticSearch run as part of your `gdk run` or `gdk
 run db` processes.
 
 ## Setup
+
+1. Go to **Admin Area > License** and ensure you have a [license](https://about.gitlab.com/handbook/developer-onboarding/#working-on-gitlab-ee) installed as this is required for ElasticSearch.
 
 1. Go to **Admin Area > Settings > Integrations** to enable Elasticsearch.
 

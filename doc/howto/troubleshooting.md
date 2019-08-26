@@ -29,6 +29,12 @@ extensions:
 gem pristine charlock_holmes
 ```
 
+## An error occured while installing gpgme on macOS
+
+Check if you have `gawk` installed >= 5.0.0 and uninstall it.
+
+Re-run the `gdk install` again and follow any on-screen instructions related to instaling `gpgme`.
+
 ## An error occurred while installing mysql2
 
 ```shell
@@ -581,7 +587,7 @@ brew install postgresql@9.6
 brew link --force postgresql@9.6
 ```
 
-## Unicorn timeout
+## Puma/Unicorn timeout
 
 Browser shows `EOF`. Logs show a timeout:
 
@@ -589,12 +595,20 @@ Browser shows `EOF`. Logs show a timeout:
 error: GET "/users/sign_in": badgateway: failed after 62s: EOF
 ```
 
-Depending on the performance of your development environment, Unicorn may
+Depending on the performance of your development environment, Puma/Unicorn may
 time out. Increase the timeout as a workaround.
 
-Edit `gitlab/config/unicorn.rb`:
+For Puma: you can use environment variables to override the default timeout:
 
-```
+Variable | Type | Description
+-------- | ---- | -----------
+`GITLAB_RAILS_RACK_TIMEOUT` | integer | Sets `service_timeout`
+`GITLAB_RAILS_WAIT_TIMEOUT` | integer | Sets `wait_timeout`
+
+
+For Unicorn: edit `gitlab/config/unicorn.rb`:
+
+```ruby
 timeout 3600
 ```
 
@@ -615,7 +629,9 @@ for `gdk` that lists killed files.
 
 If you're seeing errors such as:
 
-`ERROR -- : Failure while sending a batch of spans: Failed to open TCP connection to localhost:14268 (Connection refused - connect(2) for "localhost" port 14268)`
+```sh
+ERROR -- : Failure while sending a batch of spans: Failed to open TCP connection to localhost:14268 (Connection refused - connect(2) for "localhost" port 14268)
+```
 
 This is most likely because Jaeger is not configured in your `$GDKROOT/Procfile`.
 The easiest way to fix this is by re-creating your `Procfile` and then running
@@ -626,6 +642,95 @@ a `gdk reconfigure`:
 
 For more information about Jaeger, visit the [distributed tracing GitLab developer
 documentation](https://docs.gitlab.com/ee/development/distributed_tracing.html).
+
+## Gitaly config.toml: no such file or directory
+
+If you see errors such as:
+
+```sh
+07:23:16 gitaly.1                | time="2019-05-17T07:23:16-05:00" level=fatal msg="load config" config_path=<path-to-gdk>/gitaly/config.toml error="open <path-to-gdk>/gitaly/config.toml: no such file or directory"
+```
+
+Somehow, `gitaly/config.toml` is missing. You can re-create this file by running
+the following in your gdk directory:
+
+```sh
+make gitaly-setup
+```
+
+## Elasticsearch
+
+Running a spec locally may give you something like the following:
+
+```sh
+rake aborted!
+Gitlab::TaskFailedError: # pkg-config --cflags  -- icu-i18n icu-i18n
+Package icu-i18n was not found in the pkg-config search path.
+Perhaps you should add the directory containing `icu-i18n.pc'
+to the PKG_CONFIG_PATH environment variable
+No package 'icu-i18n' found
+Package icu-i18n was not found in the pkg-config search path.
+Perhaps you should add the directory containing `icu-i18n.pc'
+to the PKG_CONFIG_PATH environment variable
+No package 'icu-i18n' found
+pkg-config: exit status 1
+make: *** [build] Error 2
+```
+
+This indicates that Go is trying to link (unsuccessfully) to brew's `icu4c`.
+
+Find the directory where `icu-i18n.pc` resides:
+
+- On macOS, using [Homebrew](https://brew.sh/), it is generally in `/usr/local/opt/icu4c/lib/pkgconfig`
+- On Ubuntu/Debian it might be in `/usr/lib/x86_64-linux-gnu/pkgconfig`
+- On Fedora it is expected to be in `/usr/lib64/pkgconfig`
+
+You'll need to add that directory to the `PKG_CONFIG_PATH` environment variable.
+
+To fix this now, run the following on the command line:
+
+```sh
+export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:$PKG_CONFIG_PATH"
+```
+
+To fix this for the future, add the line above to `~/.bash_profile` or `~/.zshrc`.
+
+## Failures when generating Karma fixtures
+
+In some cases, running `bin/rake karma:fixtures` might fail to generate some fixtures, you'll see this kind of errors in the console:
+
+```
+Failed examples:
+
+rspec ./spec/javascripts/fixtures/blob.rb:25 # Projects::BlobController (JavaScript fixtures) blob/show.html
+rspec ./spec/javascripts/fixtures/branches.rb:24 # Projects::BranchesController (JavaScript fixtures) branches/new_branch.html
+rspec ./spec/javascripts/fixtures/commit.rb:22 # Projects::CommitController (JavaScript fixtures) commit/show.html
+```
+
+To fix this, remove `tmp/tests/` in the `gitlab/` directory and regenerate the fixtures:
+
+```sh
+rm -rf tmp/tests/ && bin/rake karma:fixtures
+```
+
+## yarn: error: no such option: --pure-lockfile
+
+The full error you might be getting is:
+
+```
+Makefile:134: recipe for target '.gitlab-yarn' failed
+make: *** [.gitlab-yarn] Error 2
+
+```
+
+This is likely to happen if you installed `yarn` using `apt install cmdtest`.
+
+To fix this, install yarn using npm instead:
+
+```
+npm install --global yarn`
+```
+
 
 ## Other problems
 

@@ -1,13 +1,13 @@
 # Configuration
 
-This document describes ways how you can configure you GDK environment.
+This document describes how you can configure your GDK environment.
 
 ## Custom ports
 
 You may want to customize the ports used by the services, so they can
 coexist and be accessible when running multiple GDKs at the same time.
 
-This may also be necessary when simulating some HA behavior or to run Geo.
+This may also be necessary when simulating some HA behavior or to run [Geo](https://about.gitlab.com/solutions/geo/).
 
 Most of the time you want to use just the UNIX sockets, if possible,
 but there are situations where sockets are not supported (for example
@@ -20,7 +20,7 @@ service they are related to:
 
 | Port filename         | Service name                                  |
 | --------------------- | --------------------------------------------- |
-| `port`                | unicorn (rails)                               |
+| `port`                | puma/unicorn (rails)                          |
 | `webpack_port`        | webpack-dev-server                            |
 | `postgresql_port`     | main postgresql server                        |
 | `postgresql_geo_port` | postgresql server for tracking database (Geo) |
@@ -56,6 +56,9 @@ variable assignment is:
   server](http://localhost:16686/search). If you are running multiple
   copies of GDK, you should set `jaeger_server_enabled=false` in all but
   one GDK instance, and have traces get send to a single instance.
+
+If you change these files, make sure to call `gdk reconfigure` to ensure
+they are respected (e.g. that Jaeger is disabled).
 
 ### Example
 

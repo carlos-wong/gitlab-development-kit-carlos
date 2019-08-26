@@ -32,8 +32,6 @@ To do a native install:
 1. [Prepare your computer](doc/prepare.md)
 2. [Set-up GDK](doc/set-up-gdk.md)
 
-If you want to use Windows, you can try [our instructions for Windows Subsystem for Linux](doc/prepare.md#experimental-windows-10-using-the-wsl-windows-subsystem-for-linux).
-
 Or if you want to use a slower virtualized installation with [Vagrant](https://www.vagrantup.com/),
 please see the [instructions for using Vagrant with VirtualBox or Docker](doc/vagrant.md).
 
@@ -50,6 +48,11 @@ If you have an old installation [update your existing GDK installation](doc/upda
 - Run everything as your 'desktop' user on your development machine
 - GitLab Development Kit itself does not run `sudo` commands
 - It is OK to leave some things to the user (e.g. installing Ruby)
+
+## Components included
+
+A list of which components are included in the GDK, and configuration instructions if needed,
+is available on the [architecture components list](https://docs.gitlab.com/ee/development/architecture.html#component-list).
 
 ## Differences with production
 

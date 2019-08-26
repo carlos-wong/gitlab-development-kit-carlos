@@ -7,7 +7,9 @@ LABEL authors.maintainer "GDK contributors: https://gitlab.com/gitlab-org/gitlab
 RUN useradd --user-group --create-home gdk
 ENV DEBIAN_FRONTEND=noninteractive
 COPY packages.txt /
-RUN apt-get update && apt-get install -y $(sed -e 's/#.*//' /packages.txt)
+RUN apt-get update && apt-get install -y software-properties-common \
+    && add-apt-repository ppa:git-core/ppa -y \
+    && apt-get install -y $(sed -e 's/#.*//' /packages.txt)
 
 # stages for fetching remote content
 # highly cacheable
@@ -23,13 +25,13 @@ ARG RUBY_BUILD_REVISION=v20190423
 RUN git clone --branch $RUBY_BUILD_REVISION --depth 1 https://github.com/rbenv/ruby-build
 
 FROM fetch AS go
-ARG GO_SHA256=4b677d698c65370afa33757b6954ade60347aaca310ea92a63ed717d7cb0c2ff
-ARG GO_VERSION=1.10.2
+ARG GO_SHA256=aea86e3c73495f205929cfebba0d63f1382c8ac59be081b6351681415f4063cf
+ARG GO_VERSION=1.12.5
 RUN curl --silent --location --output go.tar.gz https://dl.google.com/go/go$GO_VERSION.linux-amd64.tar.gz
 RUN echo "$GO_SHA256  go.tar.gz" | sha256sum -c -
 RUN tar -C /usr/local -xzf go.tar.gz
 
-FROM node:10-jessie AS nodejs
+FROM node:12-stretch AS nodejs
 # contains nodejs and yarn in /usr/local
 # https://github.com/nodejs/docker-node/blob/77f1baaa55acc71c9eda1866f0c162b434a63be5/10/jessie/Dockerfile
 WORKDIR /stage

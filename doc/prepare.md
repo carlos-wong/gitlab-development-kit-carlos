@@ -4,28 +4,38 @@
 
 ### Prerequisites for all platforms
 
+_TLDR: see sample `brew` and other package manager commands listed in [Platform-specific setup](#platform-specific-setup) below for quick installation._
+
 Make sure you follow all the guidelines and resolve all the dependencies listed below before installing GDK. Otherwise, you will experience strange errors during installation.
 
-| Requisite      | Description                                                                                                                                                                                                                                                                                                                                                                 |
+| Prerequisite      | Description                                                                                                                                                                                                                                                                                                                                                                 |
 | -------------- | -----------                                                                                                                                                                                                                                                                                                                                                                 |
 | User account   | Use a **non-root** Unix user to install GDK. This can be your normal user, but **DO NOT** run the installation as a root user.                                                                                                                                                                                                                                              |
 | Ruby           | <p>Use a Ruby version manager ([RVM](https://rvm.io/), [rbenv](https://github.com/rbenv/rbenv), [chruby](https://github.com/postmodern/chruby), etc.) to install the current [`gitlab-ce` Ruby version](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/.ruby-version).</p><p>**DO NOT** use the system Ruby.</p>                                                       |
 | Terminal       | <p>Make sure to close and reopen the Terminal after installing a Ruby version manager to make sure it is activated.</p><p>You can check the active version with the command `ruby --version`.</p>                                                                                                                                                                           |
 | Bundler        | <p>Install the version of Bundler specified in [Gemfile.lock](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/Gemfile.lock). You will find it at the very bottom, right below the text `BUNDLED WITH`.</p><p> Use the command `gem install bundler -v <version>`, replacing `<version>` with the number you found above.</p>                                            |
-| Git            | <p>We recommend using Git version 2.21 or higher.</p><p>git installation is covered in the instructions below</p>                                                                                                                                                                                                                                                           |
-| Node.js        | <p>Node.js **10.x (LTS)** or 8.x (LTS) and Yarn 1.12 or newer.</p><p>Node.js and Yarn installation is covered in the instructions below. If your package manager does not have Node.js 10.x or yarn available, visit the official websites for [Node](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/en/docs/install/) for installation instructions.</p> |
-| Go             | <p>Go 1.10 or newer.</p><p>Go installation is covered in the instructions below. If your package manager does not have up-to-date versions of Go available, visit the official [Go](https://golang.org/doc/install) website for installation instructions.</p>                                                                                                              |
+| Git            | <p>We recommend using Git version 2.22 or higher.</p><p>git installation is covered in the instructions below</p>                                                                                                                                                                                                                                                           |
+| Node.js        | <p>Node.js **12.x** and Yarn 1.12 or newer.</p><p>Node.js and Yarn installation is covered in the instructions below. If your package manager does not have Node.js 12.x or yarn available, visit the official websites for [Node](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/en/docs/install/) for installation instructions.</p> |
+| Go             | <p>Go 1.12 or newer.</p><p>Go installation is covered in the instructions below. If your package manager does not have up-to-date versions of Go available, visit the official [Go](https://golang.org/doc/install) website for installation instructions.</p>                                                                                                              |
 | Google Chrome  | [Google Chrome](https://www.google.com/chrome/) 60 or greater with [ChromeDriver](https://sites.google.com/a/chromium.org/chromedriver/downloads) version 2.33 or greater. Visit the Chrome Driver [Getting started](https://sites.google.com/a/chromium.org/chromedriver/getting-started) page for more details.                                                           |
-| PostgreSQL     | <p>PostgreSQL version 9.x, with 9.6 recommended. Using PostgreSQL version 10.x is officially not yet supported.</p><p>PostgreSQL installation is covered in the instructions below.</p>                                                                                                                                                                                     |
+| PostgreSQL     | <p>PostgreSQL version 10.x.</p><p>PostgreSQL installation is covered in the instructions below.</p>                                                                                                                                                                                     |
 | GraphicsMagick | GraphicsMagick installation is covered in the instructions below.                                                                                                                                                                                                                                                                                                           |
 | Exiftool       | Exiftool installation is covered in the instructions below.                                                                                                                                                                                                                                                                                                           |
 
+### Platform-specific setup
 
-### OS X 10.9 (Mavericks), 10.10 (Yosemite), 10.11 (El Capitan), macOS 10.12 (Sierra), macOS 10.13 (High Sierra)
+To start preparing the GDK installation, pick your platform of choice:
+
+| [macOS](#macos) | [Ubuntu](#ubuntu) | [Arch Linux](#arch-linux) | [Debian](#debian) | [Fedora](#fedora) | [CentOS](#centos) | [OpenSUSE](#opensuse) | [FreeBSD](#freebsd) | [Windows 10](#windows-10) |
+|-|-|-|-|-|-|-|-|-|
+
+### macOS
+
+Supported versions: OS X 10.9 (Mavericks) and up.
 
 Please read [the prerequisites for all platforms](#prerequisites-for-all-platforms).
 
-We are using PostgreSQL 9.6 in the following example. If you want to use another version, please adjust paths accordingly.
+We are using PostgreSQL 10 in the following example. If you want to use another version, please adjust paths accordingly.
 
 #### Install OS X prerequisites using Homebrew
 
@@ -33,15 +43,16 @@ We are using PostgreSQL 9.6 in the following example. If you want to use another
 
 | **Note on Node.js** |
 | ------------------- |
-| We recommend manual installation of Node.js LTS instead of using Homebrew to avoid breaking your development setup when you run `brew upgrade`. Install Node.js 10.x LTS [manually](https://nodejs.org/en/download/) or use a tool like [NVM](https://github.com/creationix/nvm). If you want to use Homebrew, you can prevent it from upgrading the current Node.js formula by pinning it with `brew pin node@10`. |
+| We recommend manual installation of Node.js 12.x instead of using Homebrew to avoid breaking your development setup when you run `brew upgrade`. Install Node.js 12.x [manually](https://nodejs.org/en/download/) or use a tool like [NVM](https://github.com/creationix/nvm). If you want to use Homebrew, you can prevent it from upgrading the current Node.js formula by pinning it with `brew pin node@12`. |
 
 ```
-brew install git redis postgresql@9.6 libiconv pkg-config cmake go openssl coreutils re2 graphicsmagick node@10 gpg runit
+brew install git redis postgresql@10 libiconv pkg-config cmake go openssl coreutils re2 graphicsmagick node@12 gpg runit icu4c exiftool
 brew install yarn --ignore-dependencies
 brew link pkg-config
-brew pin node@10
+brew pin node@12 icu4c readline
 bundle config build.eventmachine --with-cppflags=-I/usr/local/opt/openssl/include
-echo 'export PATH="/usr/local/opt/postgresql@9.6/bin:/usr/local/opt/node@10/bin:$PATH"' >> ~/.bash_profile
+echo 'export PATH="/usr/local/opt/postgresql@10/bin:/usr/local/opt/node@12/bin:$PATH"' >> ~/.bash_profile
+echo 'export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:$PKG_CONFIG_PATH"' >> ~/.bash_profile
 source ~/.bash_profile
 brew cask install google-chrome chromedriver
 ```
@@ -51,9 +62,9 @@ brew cask install google-chrome chromedriver
 [MacPorts](https://www.macports.org/) is another package manager for macOS. Visit their website for installation details.
 
 ```
-sudo port install git redis libiconv postgresql96-server icu pkgconfig cmake nodejs10 go openssl npm5 yarn coreutils re2 GraphicsMagick runit exiftool
+sudo port install git redis libiconv postgresql10-server icu pkgconfig cmake nodejs12 go openssl npm5 yarn coreutils re2 GraphicsMagick runit exiftool
 bundle config build.eventmachine --with-cppflags=-I/opt/local/include/openssl
-echo 'export PATH=/opt/local/lib/postgresql96/bin/:$PATH' >> ~/.profile
+echo 'export PATH=/opt/local/lib/postgresql10/bin/:$PATH' >> ~/.profile
 source ~/.profile
 ```
 
@@ -65,23 +76,30 @@ source ~/.profile
 
 Please read [the prerequisites for all platforms](#prerequisites-for-all-platforms).
 
-You can install Node.js 10.x from [nodesource APT servers](https://nodejs.org/en/download/package-manager/#debian-and-ubuntu-based-linux-distributions).
-Install Yarn from [a custom APT server](https://yarnpkg.com/lang/en/docs/install/#debian-stable) as well.
+1. Install **Node.js 12.x** from the [official Node.js binary distribution](https://github.com/nodesource/distributions/blob/master/README.md#debinstall).
+1. Install **Yarn** from the [Yarn Debian package repository](https://yarnpkg.com/lang/en/docs/install/#debian-stable).
+1. Install the rest of the dependencies:
+   ```
+   # Add apt-add-repository helper script
+   sudo apt-get install software-properties-common
+   [[ $(lsb_release -sr) < "18.04" ]] && sudo apt-get install python-software-properties
+   # This PPA contains an up-to-date version of Go
+   sudo add-apt-repository ppa:longsleep/golang-backports
+   # Setup path for Go
+   export PATH="/usr/lib/go-1.12/bin:$PATH"
+   # This PPA contains an up-to-date version of git
+   sudo add-apt-repository ppa:git-core/ppa
+   sudo apt-get update
+   sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server \
+     libicu-dev cmake g++ libre2-dev libkrb5-dev libsqlite3-dev golang-1.12-go ed \
+     pkg-config graphicsmagick runit libimage-exiftool-perl rsync
+   ```
 
-```
-# Add apt-add-repository helper script
-sudo apt-get install software-properties-common python-software-properties
-# This PPA contains an up-to-date version of Go
-sudo add-apt-repository ppa:longsleep/golang-backports
-# This PPA contains an up-to-date version of git
-sudo add-apt-repository ppa:git-core/ppa
-sudo apt-get update
-sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server \
-  libicu-dev cmake g++ libre2-dev libkrb5-dev libsqlite3-dev golang-1.10-go ed \
-  pkg-config graphicsmagick runit libimage-exiftool-perl
-```
+   > ℹ️ Ubuntu 18.04 and beyond doesn't have python-software-properties as a separate package.
 
-Ubuntu 14.04 (Trusty Tahr) doesn't have the `libre2-dev` package available, but
+1. You're all set now. [Go to next steps](#next-steps).
+
+> ℹ️ Ubuntu 14.04 (Trusty Tahr) doesn't have the `libre2-dev` package available, but
 you can [install re2 manually](https://github.com/google/re2/wiki/Install).
 
 #### Arch Linux
@@ -90,7 +108,7 @@ Please read [the prerequisites for all platforms](#prerequisites-for-all-platfor
 
 ```
 pacman -S postgresql redis postgresql-libs icu npm ed cmake openssh git go re2 \
-  unzip graphicsmagick runit perl-image-exiftool
+  unzip graphicsmagick runit perl-image-exiftool rsync
 ```
 
 #### Debian
@@ -100,7 +118,7 @@ Please read [the prerequisites for all platforms](#prerequisites-for-all-platfor
 ```
 sudo apt-get install postgresql postgresql-contrib libpq-dev redis-server \
   libicu-dev cmake g++ libkrb5-dev libre2-dev ed pkg-config graphicsmagick \
-  runit libimage-exiftool-perl
+  runit libimage-exiftool-perl rsync
 ```
 
 If you are running Debian Experimenal or newer you can install a Go
@@ -116,19 +134,19 @@ We assume you are using Fedora >= 22.
 
 If you are running Fedora < 27 you'll need to install `go` manually using [go] official installation instructions.
 
->**Note:** Fedora 28+ ships PostgreSQL 10.x in default repositories, you can use `postgresql:9.6` module to install PostgreSQL 9.6.
-But keep in mind that will replace the PostgreSQL 10.x package, so you cannot use both versions at once.
+>**Note:** Fedora 30+ ships PostgreSQL 11.x in default repositories, you can use `postgresql:10` module to install PostgreSQL 10.
+But keep in mind that will replace the PostgreSQL 11.x package, so you cannot use both versions at once.
 
 ```sh
 sudo dnf install fedora-repos-modular
-sudo dnf module enable postgresql:9.6
+sudo dnf module enable postgresql:10
 ```
 
 ```
 sudo dnf install postgresql libpqxx-devel postgresql-libs redis libicu-devel \
   nodejs git ed cmake rpm-build gcc-c++ krb5-devel go postgresql-server \
   postgresql-contrib re2 GraphicsMagick re2-devel sqlite-devel perl-Digest-SHA \
-  runit perl-Image-ExifTool
+  runit perl-Image-ExifTool rsync
 ```
 
 You may need to install Redis 2.8 or newer manually.
@@ -140,13 +158,14 @@ Please read [the prerequisites for all platforms](#prerequisites-for-all-platfor
 This is tested on CentOS 6.5:
 
 ```
-sudo yum install https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-6-x86_64/pgdg-centos96-9.6-3.noarch.rpm
+sudo yum install https://download.postgresql.org/pub/repos/yum/10/redhat/rhel-6-x86_64/pgdg-centos10-10-2.noarch.rpm
 sudo yum install https://download.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-sudo yum install postgresql96-server postgresql96-devel libicu-devel git cmake \
+sudo yum install postgresql10-server postgresql10-devel libicu-devel git cmake \
   gcc-c++ redis ed fontconfig freetype libfreetype.so.6 libfontconfig.so.1 \
-  libstdc++.so.6 nodejs npm re2 re2-devel GraphicsMagick runit perl-Image-ExifTool
+  libstdc++.so.6 nodejs npm re2 re2-devel GraphicsMagick runit perl-Image-ExifTool \
+  rsync
 
-bundle config build.pg --with-pg-config=/usr/pgsql-9.6/bin/pg_config
+bundle config build.pg --with-pg-config=/usr/pgsql-10/bin/pg_config
 # This example uses Ruby 2.6.3. Substitute with the current version if different.
 sudo rvm install 2.6.3
 sudo rvm use 2.6.3
@@ -177,7 +196,7 @@ sudo zypper dup
 sudo zypper install libxslt-devel  postgresql postgresql-devel libpqxx-devel redis libicu-devel nodejs git ed cmake \
         rpm-build gcc-c++ krb5-devel postgresql-server postgresql-contrib \
         libxml2-devel libxml2-devel-32bit findutils-locate re2 GraphicsMagick \
-        runit exiftool
+        runit exiftool rsync
 ```
 
 On leap 42.1 you also need:
@@ -208,11 +227,13 @@ sudo ln -s /usr/sbin/redis-server /usr/bin/redis-server
 Please read [the prerequisites for all platforms](#prerequisites-for-all-platforms).
 
 ```
-sudo pkg install postgresql93-server postgresql93-contrib postgresql-libpqxx \
+sudo pkg install postgresql10-server postgresql10-contrib postgresql-libpqxx \
 redis go node icu krb5 gmake re2 GraphicsMagick p5-Image-ExifTool
 ```
 
-### **Experimental** Windows 10 using the WSL (Windows Subsystem for Linux)
+### Windows 10
+
+> 🚨 Support for Windows 10 is **experimental**, via the Windows Subsystem for Linux (WSL).
 
 **Setting up the Windows Subsystem for Linux:**
 
@@ -239,9 +260,9 @@ Return to the prerequisite installation steps.
 Install Node.js from source:
 
 ```sh
-curl -O https://nodejs.org/dist/v10.15.0/node-v10.15.0.tar.gz
-tar -zxf node-v10.15.0.tar.gz
-cd node-v10.15.0
+curl -O https://nodejs.org/dist/v12.4.0/node-v12.4.0.tar.gz
+tar -zxf node-v12.4.0.tar.gz
+cd node-v12.4.0
 ```
 
 Build the Node.js library. The following instructions are copied from the Node.js BUILDING.md document:
@@ -273,8 +294,6 @@ Install the remainder of the prerequisites
 ```
 # Add apt-add-repository helper script
 sudo apt-get install software-properties-common python-software-properties
-# This PPA contains an up-to-date version of Go
-sudo apt-add-repository -y ppa:ubuntu-lxc/lxd-stable
 sudo apt-get update
 sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server \
   libicu-dev cmake g++ libkrb5-dev libre2-dev golang ed pkg-config runit
@@ -295,7 +314,7 @@ it here.
 
 ### Next Steps
 
-After you have completed everything here, please proceed to [Set-up GDK](./set-up-gdk.md)
+After you have completed everything here, please proceed to [setting up the GDK](./set-up-gdk.md)
 
 [puias]: https://gitlab.com/gitlab-org/gitlab-recipes/tree/master/install/centos#add-puias-computational-repository
 [docker engine]: https://docs.docker.com/engine/installation/

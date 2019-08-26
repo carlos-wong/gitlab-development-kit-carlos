@@ -2,6 +2,7 @@
 
 -include env.mk
 
+gitlab_clone_dir = gitlab
 gitlab_repo = https://github.com/carlos-wong/gitlab-ce-carlos.git
 gitlab_repo_base = $(basename ${gitlab_repo})
 gitlab_repo_ruby_version = $(shell curl -s "${gitlab_repo_base}/raw/master/.ruby-version")
@@ -17,6 +18,7 @@ gitaly_proto_clone_dir = ${gitaly_gopath}/src/gitlab.com/gitlab-org/gitaly-proto
 gitlab_pages_repo = https://gitlab.com/gitlab-org/gitlab-pages.git
 gitlab_pages_clone_dir = gitlab-pages/src/gitlab.com/gitlab-org/gitlab-pages
 gitlab_docs_repo = https://gitlab.com/gitlab-com/gitlab-docs.git
+gitlab_elasticsearch_indexer_repo = https://gitlab.com/gitlab-org/gitlab-elasticsearch-indexer.git
 gitlab_development_root = $(shell pwd)
 gitaly_assembly_dir = ${gitlab_development_root}/gitaly/assembly
 postgres_bin_dir ?= $(shell ruby support/pg_bindir)
@@ -53,6 +55,7 @@ workhorse_version = $(shell bin/resolve-dependency-commitish "${gitlab_developme
 gitlab_shell_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_SHELL_VERSION")
 gitaly_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITALY_SERVER_VERSION")
 pages_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_PAGES_VERSION")
+gitlab_elasticsearch_indexer_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_ELASTICSEARCH_INDEXER_VERSION")
 tracer_build_tags = tracer_static tracer_static_jaeger
 jaeger_server_enabled ?= true
 jaeger_version = 1.10.1
@@ -60,7 +63,9 @@ ifeq ($(shallow_clone),true)
 git_depth_param = --depth=1
 endif
 
-all: gitlab-setup gitlab-shell-setup gitlab-workhorse-setup gitlab-pages-setup support-setup gitaly-setup prom-setup object-storage-setup
+export GDK_RUNIT=0 # Several scripts in support/ still depend on 'gdk run'
+
+all: gitlab-setup gitlab-shell-setup gitlab-workhorse-setup gitlab-pages-setup support-setup gitaly-setup prom-setup object-storage-setup gitlab-elasticsearch-indexer-setup
 
 # Set up the GitLab Rails app
 
@@ -75,10 +80,10 @@ check-ruby-version:
 check-go-version:
 	bin/$@
 
-gitlab-setup: check-ruby-version gitlab/.git gitlab-config bundler .gitlab-bundle yarn .gitlab-yarn .gettext
+gitlab-setup: gitlab/.git check-ruby-version gitlab-config bundler .gitlab-bundle yarn .gitlab-yarn .gettext
 
 gitlab/.git:
-	git clone ${git_depth_param} ${gitlab_repo} gitlab
+	git clone ${git_depth_param} ${gitlab_repo} ${gitlab_clone_dir}
 
 gitlab-config: gitlab/config/gitlab.yml gitlab/config/database.yml gitlab/config/unicorn.rb gitlab/config/resque.yml gitlab/public/uploads gitlab/config/puma.rb
 
@@ -92,14 +97,7 @@ auto_devops_registry_port: auto_devops_gitlab_port
 	expr ${auto_devops_gitlab_port} + 5000 > $@
 
 gitlab/config/gitlab.yml: support/templates/gitlab.yml.erb auto_devops_enabled auto_devops_gitlab_port auto_devops_registry_port
-	hostname=${hostname} port=${port} relative_url_root=${relative_url_root}\
-		https=${https}\
-		webpack_port=${webpack_port}\
-		registry_host=${registry_host} registry_external_port=${registry_external_port}\
-		registry_enabled=${registry_enabled} registry_port=${registry_port}\
-		object_store_enabled=${object_store_enabled} object_store_port=${object_store_port}\
-		gitlab_pages_port=${gitlab_pages_port}\
-		support/edit-gitlab-yml gitlab/config/gitlab.yml
+	rake gitlab/config/gitlab.yml
 
 gitlab/config/database.yml: database.yml.example
 	bin/safe-sed "$@" \
@@ -163,7 +161,7 @@ symlink-gitlab-shell:
 	support/symlink gitlab-shell ${gitlab_shell_clone_dir}
 
 ${gitlab_shell_clone_dir}/.git:
-	git clone ${git_depth_param} ${gitlab_shell_repo} ${gitlab_shell_clone_dir}
+	git clone --quiet --branch "${gitlab_shell_version}" ${git_depth_param} ${gitlab_shell_repo} ${gitlab_shell_clone_dir}
 
 gitlab-shell/config.yml: gitlab-shell/config.yml.example
 	bin/safe-sed "$@" \
@@ -171,6 +169,7 @@ gitlab-shell/config.yml: gitlab-shell/config.yml.example
 		-e "s|^gitlab_url:.*|gitlab_url: http+unix://$(subst /,%2F,${gitlab_development_root}/gitlab.socket)|" \
 		-e "s|/usr/bin/redis-cli|$(shell which redis-cli)|" \
 		-e "s|^  socket: .*|  socket: ${gitlab_development_root}/redis/redis.socket|" \
+		-e "s|^# migration|migration|" \
 		"$<"
 
 .gitlab-shell-bundle:
@@ -182,23 +181,16 @@ gitlab-shell/.gitlab_shell_secret:
 
 # Set up gitaly
 
-gitaly-setup: gitaly/bin/gitaly gitaly/config.toml ${gitaly_proto_clone_dir}/.git
+gitaly-setup: gitaly/bin/gitaly gitaly/gitaly.config.toml ${gitaly_proto_clone_dir}/.git
 
 ${gitaly_clone_dir}/.git:
-	git clone ${git_depth_param} --quiet ${gitaly_repo} ${gitaly_clone_dir}
+	git clone --quiet --branch "${gitaly_version}" ${git_depth_param} ${gitaly_repo} ${gitaly_clone_dir}
 
 ${gitaly_proto_clone_dir}/.git:
 	git clone ${git_depth_param} --quiet ${gitaly_proto_repo} ${gitaly_proto_clone_dir}
 
-gitaly/config.toml: $(gitaly_clone_dir)/config.toml.example
-	bin/safe-sed "$@" \
-		-e "s|/home/git|${gitlab_development_root}|g" \
-		-e "s|^socket_path.*|socket_path = \"${gitlab_development_root}/gitaly.socket\"|" \
-		-e "s|^bin_dir.*|bin_dir = \"${gitlab_development_root}/gitaly/bin\"|" \
-		-e "s|# prometheus_listen_addr|prometheus_listen_addr|" \
-		-e "s|# \[logging\]|\[logging\]|" \
-		-e "s|# level = \"warn\"|level = \"warn\"|" \
-		"$<"
+gitaly/gitaly.config.toml: support/templates/gitaly.config.toml.erb
+	rake gitaly/gitaly.config.toml
 
 prom-setup:
 	if [ "$(uname -s)" = "Linux" ]; then \
@@ -251,7 +243,7 @@ self-update: unlock-dependency-installers
 
 # Update gitlab, gitlab-shell, gitlab-workhorse, gitlab-pages and gitaly
 # Pull gitlab directory first since dependencies are linked from there.
-update: ensure-postgres-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-update
+update: ensure-postgres-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-update gitlab-elasticsearch-indexer-update
 
 ensure-postgres-running:
 	@test -f ${postgres_data_dir}/postmaster.pid || \
@@ -296,7 +288,7 @@ gitaly-clean:
 
 .PHONY: gitaly/bin/gitaly
 gitaly/bin/gitaly: check-go-version ${gitaly_clone_dir}/.git
-	make -C ${gitaly_clone_dir} assemble ASSEMBLY_ROOT=${gitaly_assembly_dir} BUNDLE_FLAGS=--no-deployment BUILD_TAGS="${tracer_build_tags}"
+	$(MAKE) -C ${gitaly_clone_dir} assemble ASSEMBLY_ROOT=${gitaly_assembly_dir} BUNDLE_FLAGS=--no-deployment BUILD_TAGS="${tracer_build_tags}"
 	mkdir -p ${gitlab_development_root}/gitaly/bin
 	ln -sf ${gitaly_assembly_dir}/bin/* ${gitlab_development_root}/gitaly/bin
 	rm -rf ${gitlab_development_root}/gitaly/ruby
@@ -319,23 +311,11 @@ support-setup: .ruby-version foreman Procfile redis gitaly-setup jaeger-setup po
 		echo "*********************************************"; \
 	fi
 
+gdk.yml:
+	touch $@
 
-Procfile: Procfile.example auto_devops_enabled auto_devops_gitlab_port auto_devops_registry_port
-	bin/safe-sed "$@" \
-		-e "s|/home/git|${gitlab_development_root}|g"\
-		-e "s|/usr/sbin/sshd|${sshd_bin}|"\
-		-e "s|postgres |${postgres_bin_dir}/postgres |"\
-		-e "s|DEV_SERVER_PORT=3808 |DEV_SERVER_PORT=${webpack_port} |"\
-		-e "s|-listen-http \":3010\" |-listen-http \":${gitlab_pages_port}\" -artifacts-server http://${hostname}:${port}/api/v4 |"\
-		-e "s|jaeger-VERSION|jaeger-${jaeger_version}|" \
-		-e "$(if $(filter false,$(jaeger_server_enabled)),/^jaeger:/s/^/#/,/^#\s*jaeger:/s/^#\s*//)" \
-		-e "$(if $(filter true,$(auto_devops_enabled)),s|#tunnel_gitlab:.*|tunnel_gitlab: ssh -N -R $(auto_devops_gitlab_port):localhost:\$$port qa-tunnel.gitlab.info|g,/^#tunnel_gitlab:/s/^//)" \
-		-e "$(if $(filter true,$(auto_devops_enabled)),s|#tunnel_registry:.*|tunnel_registry: ssh -N -R ${auto_devops_registry_port}:localhost:${registry_port} qa-tunnel.gitlab.info|g,/^#tunnel_registry:/s/^//)" \
-		"$<"
-	if [ -f .vagrant_enabled ]; then \
-		echo "0.0.0.0" > host; \
-		echo "3000" > port; \
-	fi
+Procfile: Procfile.erb gdk.yml auto_devops_enabled auto_devops_gitlab_port auto_devops_registry_port
+	rake $@
 
 redis: redis/redis.conf
 
@@ -468,10 +448,10 @@ gitlab-workhorse-clean-bin:
 
 .PHONY: gitlab-workhorse/bin/gitlab-workhorse
 gitlab-workhorse/bin/gitlab-workhorse: check-go-version ${gitlab_workhorse_clone_dir}/.git
-	GOPATH=${gitlab_development_root}/gitlab-workhorse GOBIN=${gitlab_development_root}/gitlab-workhorse/bin go install -tags "${tracer_build_tags}" gitlab.com/gitlab-org/gitlab-workhorse/...
+	$(MAKE) -C ${gitlab_workhorse_clone_dir} install PREFIX=${gitlab_development_root}/gitlab-workhorse
 
 ${gitlab_workhorse_clone_dir}/.git:
-	git clone ${git_depth_param} ${gitlab_workhorse_repo} ${gitlab_workhorse_clone_dir}
+	git clone --quiet --branch "${workhorse_version}" ${git_depth_param} ${gitlab_workhorse_repo} ${gitlab_workhorse_clone_dir}
 
 gitlab-workhorse/.git/pull:
 	cd ${gitlab_workhorse_clone_dir} && \
@@ -488,10 +468,10 @@ gitlab-pages-clean-bin:
 
 .PHONY: gitlab-pages/bin/gitlab-pages
 gitlab-pages/bin/gitlab-pages: check-go-version ${gitlab_pages_clone_dir}/.git
-	GOPATH=${gitlab_development_root}/gitlab-pages GOBIN=${gitlab_development_root}/gitlab-pages/bin go install gitlab.com/gitlab-org/gitlab-pages
+	GOPATH=${gitlab_development_root}/gitlab-pages GOBIN=${gitlab_development_root}/gitlab-pages/bin GO111MODULE=off go install gitlab.com/gitlab-org/gitlab-pages
 
 ${gitlab_pages_clone_dir}/.git:
-	git clone ${git_depth_param} ${gitlab_pages_repo} ${gitlab_pages_clone_dir}
+	git clone --quiet --branch "${pages_version}" ${git_depth_param} ${gitlab_pages_repo} ${gitlab_pages_clone_dir}
 
 gitlab-pages/.git/pull:
 	cd ${gitlab_pages_clone_dir} && \
@@ -587,6 +567,27 @@ elasticsearch-${elasticsearch_version}.tar.gz:
 	echo "${elasticsearch_tar_gz_sha1}  $@.tmp" | shasum -a1 -c -
 	mv $@.tmp $@
 
+gitlab-elasticsearch-indexer-setup: gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer
+
+gitlab-elasticsearch-indexer-update: gitlab-elasticsearch-indexer/.git/pull gitlab-elasticsearch-indexer-clean-bin gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer
+
+gitlab-elasticsearch-indexer-clean-bin:
+	rm -rf gitlab-elasticsearch-indexer/bin
+
+gitlab-elasticsearch-indexer/.git:
+	git clone --quiet --branch "${gitlab_elasticsearch_indexer_version}" ${git_depth_param} ${gitlab_elasticsearch_indexer_repo} gitlab-elasticsearch-indexer
+
+.PHONY: gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer
+gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer: check-go-version gitlab-elasticsearch-indexer/.git
+	$(MAKE) -C gitlab-elasticsearch-indexer build
+
+.PHONY: gitlab-elasticsearch-indexer/.git/pull
+gitlab-elasticsearch-indexer/.git/pull: gitlab-elasticsearch-indexer/.git
+	cd gitlab-elasticsearch-indexer && \
+		git stash &&\
+		git fetch --all --tags --prune && \
+		git checkout "${gitlab_elasticsearch_indexer_version}"
+
 object-storage-setup: minio/data/lfs-objects minio/data/artifacts minio/data/uploads minio/data/packages
 
 minio/data/%:
@@ -636,15 +637,14 @@ clean-config:
 	.ruby-version \
 	Procfile \
 	gitlab-workhorse/config.toml \
-	gitaly/config.toml \
+	gitaly/gitaly.config.toml \
 	nginx/conf/nginx.conf \
 	registry/config.yml \
 	jaeger
 
 touch-examples:
 	touch \
-	$(gitaly_clone_dir)/config.toml.example \
-	Procfile.example \
+	Procfile.erb \
 	database.yml.example \
 	database_geo.yml.example \
 	gitlab-shell/config.yml.example \
@@ -659,6 +659,8 @@ touch-examples:
 	redis/redis.conf.example \
 	redis/resque.yml.example \
 	registry/config.yml.example \
+	support/templates/gitaly.toml.erb \
+	support/templates/praefect.toml.erb \
 	support/templates/gitlab.yml.erb
 
 unlock-dependency-installers:

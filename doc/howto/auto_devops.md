@@ -62,7 +62,16 @@ gdk reconfigure
 
 This script will create all necessary configuration for one to run Auto DevOps locally. Including assigning two random ports for GitLab instance and GitLab Registry. It's important that this ports are randomized so we avoid colliding two developers with the same ports.
 
-After the script finishes, it will inform you of the `GitLab` and `Registry` URLs.
+After the script finishes, it will inform you of the `GitLab` and `Registry` URLs. For example:
+
+```bash
+*********************************************
+Tunnel URLs
+
+GitLab: https://[PORT].qa-tunnel.gitlab.info
+Registry: https://[PORT].qa-tunnel.gitlab.info
+*********************************************
+```
 
 If the ports generated aren't suitable (they collide with someone else's), you can modify `auto_devops_gitlab_port` and `auto_devops_registry_port` directly, or generate a new random pair:
 
@@ -77,18 +86,41 @@ Finally, run the below command to start all the services:
 port=8080 gdk run
 ```
 
+Now login as root using the Gitlab tunnel URL (`https://[PORT].qa-tunnel.gitlab.info`) and the default password. Once you are logged in, change the default password.
 
-Now login as root using the default password and change your password.
+### Secure your GitLab instance
 
-**IMPORTANT**: You should change your root password since it is now internet
-accessible. You should also disable a new users registration feature on
-instance settings page (in the admin panel).
+Since your GitLab instance is now internet accessible, you should secure it by completing the following actions:
+
+- Change the root user's password
+
+- Disable new user registration (Admin Area > Settings > General > Sign-up restrictions > Sign-up enabled)
+
+- Change the password of all seeded users (run the following code in a Rails console):
+
+    ```ruby
+    User.where.not(username: 'root').all.each do |user|
+      user.password = user.password_confirmation = SecureRandom.hex(16)
+      user.save!
+    end
+    ```
 
 ## Google OAuth2
 
 To be able to create a new GKE Cluster via GitLab, you need to configure
-Gitlab to be able to authenticate with Google. See the [Google Oauth2
-howto](/doc/howto/google-oauth2.md) for instructions.
+Gitlab to be able to authenticate with Google. To get an OAuth token
+that works with your server add your redirect URLs for the generated
+GitLab tunnel URL to [the shared OAuth
+client](https://console.cloud.google.com/apis/credentials/oauthclient/696404988091-a80933t1dpfu38khu8o4mfrt32pad0ij.apps.googleusercontent.com?project=gitlab-internal-153318).
+You need to add the following 2 URLs under "Authorized redirect URIs" on
+the GCP console:
+
+- `https://[PORT].qa-tunnel.gitlab.info/users/auth/google_oauth2/callback`
+- `https://[PORT].qa-tunnel.gitlab.info/-/google_api/auth/callback`
+
+Then copy the Client ID and Client secret from that page and use those
+to reconfigure GDK using the instructions at [Google Oauth2
+howto](/doc/howto/google-oauth2.md#gdk-setup).
 
 ## Conclusion
 
@@ -159,7 +191,7 @@ You should now be ready to run the test. Execute the following command
 in the `qa/` directory:
 
 ```bash
-GITLAB_PASSWORD=<root-user-password> GCLOUD_ZONE=us-central1-a CHROME_HEADLESS=false bin/qa Test::Integration::Kubernetes https://<gitlab-number>.qa-tunnel.gitlab.info/
+GITLAB_PASSWORD=<root-user-password> GCLOUD_REGION=us-central1 CHROME_HEADLESS=false bundle exec bin/qa Test::Integration::Kubernetes https://<gitlab-number>.qa-tunnel.gitlab.info/
 ```
 
 You can also run single tests with RSpec line number arguments. As the
@@ -167,7 +199,7 @@ You can also run single tests with RSpec line number arguments. As the
 `--tag ` argument to override the exclusion:
 
 ```bash
-GITLAB_PASSWORD=<root-user-password> GCLOUD_ZONE=us-central1-a CHROME_HEADLESS=false bin/qa Test::Instance::All https://<gitlab-number>.qa-tunnel.gitlab.info/ --tag orchestrated qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb:71
+GITLAB_PASSWORD=<root-user-password> GCLOUD_REGION=us-central1 CHROME_HEADLESS=false bundle exec bin/qa Test::Instance::All https://<gitlab-number>.qa-tunnel.gitlab.info/ --tag orchestrated qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb:71
 ```
 
 More information about running QA tests can be found in
@@ -190,15 +222,6 @@ NOTE: [This
 test](https://gitlab.com/gitlab-org/gitlab-ce/blob/eb146e9abe08c3991b5a54237c24d15312c70ee8/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L9)
 does teardown the K8s cluster at the end so after the test finishes it won't be
 possible to run the pipeline again unless you comment this out.
-
-## Tips, Troubleshooting and Useful Commands
-
-Be sure to check out:
-
-- [Auto DevOps - Tips and Troubleshooting](doc/howto/auto_devops/tips_and_troubleshooting.md)
-- [Auto DevOps - Useful Commands](doc/howto/auto_devops/useful_commands.md)
-
-They might save you a lot of time time during work.
 
 ## Technical Details and Alternatives
 
@@ -508,3 +531,12 @@ created by these automated tests. The disk name will start with
 `gke-qa-cluster-`. Also note there will likely be many such disks here as our
 automated tests do not clean these up after each run. It is a good idea to
 clean them up yourself while you're on this page.
+
+## Tips, Troubleshooting and Useful Commands
+
+Be sure to check out:
+
+- [Auto DevOps - Tips and Troubleshooting](doc/howto/auto_devops/tips_and_troubleshooting.md)
+- [Auto DevOps - Useful Commands](doc/howto/auto_devops/useful_commands.md)
+
+They might save you a lot of time time during work.
