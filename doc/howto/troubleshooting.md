@@ -25,7 +25,7 @@ LoadError: dlopen(/home/user/.rbenv/versions/2.6.3/lib/ruby/gems/2.5.0/gems/char
 In that case, find the offending gem and use `pristine` to rebuild its native
 extensions:
 
-```bash
+```sh
 gem pristine charlock_holmes
 ```
 
@@ -34,35 +34,6 @@ gem pristine charlock_holmes
 Check if you have `gawk` installed >= 5.0.0 and uninstall it.
 
 Re-run the `gdk install` again and follow any on-screen instructions related to instaling `gpgme`.
-
-## An error occurred while installing mysql2
-
-```shell
-An error occurred while installing mysql2 (0.4.10), and Bundler cannot continue.
-Make sure that `gem install mysql2 -v '0.4.10' --source 'https://rubygems.org/'` succeeds before bundling.
-```
-
-```shell
-Installing mysql2 0.4.10 with native extensions
-Gem::Ext::BuildError: ERROR: Failed to build gem native extension.
-
-    current directory: /home/user/.rbenv/versions/2.6.3/lib/ruby/gems/2.6.0/gems/mysql2-0.4.10/ext/mysql2
-/home/user/.rbenv/versions/2.6.3/bin/ruby -I /home/user/.rbenv/versions/2.6.3/lib/ruby/2.6.0 -r
-./siteconf20190510-96137-15ejlj6.rb extconf.rb --with-ldflags\=-L/usr/local/opt/openssl/lib\
---with-cppflags\=-I/usr/local/opt/openssl/include
-checking for rb_absint_size()... *** extconf.rb failed ***
-Could not create Makefile due to some reason, probably lack of necessary
-libraries and/or headers.  Check the mkmf.log file for more details.  You may
-need configuration options.
-```
-
-The solution here is:
-
-```shell
-bundle config --global build.mysql2 --with-opt-dir="$(brew --prefix openssl)"
-```
-
-And running `bundle` again will work.
 
 ## `charlock_holmes` `0.7.x` cannot be installed on macOS Sierra
 
@@ -134,10 +105,11 @@ gem install charlock_holmes -v '0.7.5' -- --with-cppflags=-DU_USING_ICU_NAMESPAC
 
 0.7.6 fixes this issue. See [this issue](https://github.com/brianmario/charlock_holmes/issues/126) for more details.
 
-## Unable to build and install pg gem on gdk run
+## Unable to build and install pg gem on gdk install
 
 After installing PostgreSQL with brew you will have to set the proper path to PostgreSQL.
-You may run into the following errors on running `gdk run`
+You may run into the following errors on running `gdk install`
+
 ```
 Gem::Ext::BuildError: ERROR: Failed to build gem native extension.
 
@@ -164,7 +136,7 @@ If you need to have this software first in your PATH run:
   echo 'export PATH="/usr/local/opt/postgresql@9.6/bin:$PATH"' >> ~/.bash_profile
 ```
 
-Once this is set, run the `gdk run` command again.
+Once this is set, run the `gdk install` command again.
 
 ## Error in database migrations when pg_trgm extension is missing
 
@@ -173,7 +145,7 @@ are installing GDK for the first time this is handled automatically from the
 database schema. In case you are updating your GDK and you experience this
 error, make sure you pull the latest changes from the GDK repository and run:
 
-```bash
+```sh
 ./support/enable-postgres-extensions
 ```
 
@@ -197,7 +169,6 @@ completely.
 
 ## Rails cannot connect to Postgres
 
-- Until [gitlab-ce#54718](https://gitlab.com/gitlab-org/gitlab-ce/issues/54718) is fixed, [comment out](https://gitlab.com/gitlab-org/gitlab-development-kit/issues/420#note_121439593) Sidekiq's reliable fetch initialization.
 - Check if foreman is running in the gitlab-development-kit directory.
 - Check for custom Postgres connection settings defined via the environment; we
   assume none such variables are set. Look for them with `set | grep '^PG'`.
@@ -224,11 +195,11 @@ In case you use the same database for both CE and EE development, sometimes you
 can get stuck in a situation when the migration is up in `rake db:migrate:status`,
 but in reality the database doesn't have it.
 
-For example, https://gitlab.com/gitlab-org/gitlab-ce/merge_requests/3186
+For example, https://gitlab.com/gitlab-org/gitlab-foss/merge_requests/3186
 introduced some changes when a few EE migrations were added to CE. If you were
 using the same db for CE and EE you would get hit by the following error:
 
-```bash
+```sh
 undefined method `share_with_group_lock' for #<Group
 ```
 
@@ -243,8 +214,8 @@ which fails if column does not exist or can cause data loss if column exists.
 
 A quick solution is to remove the database data and then recreate it:
 
-```bash
-rm -rf postgresql/data ; make
+```sh
+bundle exec rake setup
 ```
 
 ---
@@ -252,7 +223,7 @@ rm -rf postgresql/data ; make
 If you don't want to nuke the database, you can perform the migrations manually.
 Open a terminal and start the rails console:
 
-```bash
+```sh
 rails console
 ```
 
@@ -354,7 +325,6 @@ git checkout -b can-I-commit
 git commit --allow-empty -m 'I can commit'
 ```
 
-
 ## 'gem install nokogiri' fails
 
 Make sure that Xcode Command Line Tools installed on your development machine. For the discussion see this [issue](https://gitlab.com/gitlab-org/gitlab-development-kit/issues/124)
@@ -389,6 +359,90 @@ If building `gpgme` gem fails with an `Undefined symbols for architecture x86_64
     ```
 
 You can now run `gdk install` or `bundle` again.
+
+## `gem install nokogumbo` fails
+
+If you see the following error installing the `nokogumbo` gem via `gdk install`:
+
+```sh
+
+Running 'configure' for libxml2 2.9.9... OK
+Running 'compile' for libxml2 2.9.9... ERROR, review
+...
+sed -e
+'s?\@XML_LIBDIR\@?-L/Users/erick/Development/gitlab-development-kit/gitlab/-?/gems/nokogiri-1.10.4/ports/x86_64-apple-darwin18.7.0/libxml2/2.9.9/lib?g'
+\
+-e
+'s?\@XML_INCLUDEDIR\@?-I/Users/erick/Development/gitlab-development-kit/gitlab/-?/gems/nokogiri-1.10.4/ports/x86_64-apple-darwin18.7.0/libxml2/2.9.9/include/libxml2?g'
+\
+        -e 's?\@VERSION\@?2.9.9?g' \
+        -e 's?\@XML_LIBS\@?-lxml2 -lz -L/usr/local/Cellar/xz/5.2.4/lib -llzma -lpthread  -liconv  -lm ?g' \
+           < ./xml2Conf.sh.in > xml2Conf.tmp \
+    && mv xml2Conf.tmp xml2Conf.sh
+sed: 1: "s?\@XML_LIBDIR\@?-L/Use ...": bad flag in substitute command: '/'
+make[3]: *** [xml2Conf.sh] Error 1
+make[2]: *** [all-recursive] Error 1
+make[1]: *** [all] Error 2
+...
+An error occurred while installing nokogumbo (1.5.0), and Bundler cannot continue.
+Make sure that `gem install nokogumbo -v '1.5.0' --source 'https://rubygems.org/'` succeeds before bundling.
+
+In Gemfile:
+  sanitize was resolved to 4.6.6, which depends on
+    nokogumbo
+make: *** [.gitlab-bundle] Error 5
+```
+
+A solution is to:
+
+1. Instruct Bundler to use the system libraries when building `nokogumbo`:
+
+    ```sh
+    bundle config build.nokogumbo --use-system-libraries
+    ```
+
+2. Re-run `gdk install`
+
+## `gem install ffi` fails
+
+If you see the following error installing the `ffi` gem via `gdk install`:
+
+```sh
+Gem::Ext::BuildError: ERROR: Failed to build gem native extension.
+...
+sed: 1: "s?\@XML_LIBDIR\@?-L/Use ...": bad flag in substitute command: '/'
+...
+*** extconf.rb failed ***
+Could not create Makefile due to some reason, probably lack of necessary
+libraries and/or headers.  Check the mkmf.log file for more details.  You may
+need configuration options.
+...
+An error occurred while installing nokogiri (1.10.4), and Bundler cannot continue.
+Make sure that `gem install nokogiri -v '1.10.4' --source 'https://rubygems.org/'` succeeds before bundling.
+...
+compiling AbstractMemory.c
+In file included from AbstractMemory.c:47:
+In file included from ./AbstractMemory.h:42:
+./Types.h:78:10: fatal error: 'ffi.h' file not found
+#include <ffi.h>
+        ^~~~~~~
+1 error generated.
+make[1]: *** [AbstractMemory.o] Error 1
+...
+An error occurred while installing ffi (1.11.1), and Bundler cannot continue.
+Make sure that `gem install ffi -v '1.11.1' --source 'https://rubygems.org/'` succeeds before bundling.
+```
+
+A solution on macOS is to:
+
+1. Ensure the `PKG_CONFIG_PATH` and `LDFLAGS` environment variables are correctly set:
+
+    ```sh
+    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/libffi/lib/pkgconfig"
+    export LDFLAGS="$LDFLAGS:-L$(brew --prefix)/opt/libffi/lib"
+    ```
+
+2. Re-run `gdk install`
 
 ## LoadError due to readline
 
@@ -495,12 +549,11 @@ If you still encounter some errors, see the troubleshooting FAQ below:
 
     This probably means that the webpack dev server isn't running or that your
     gitlab.yml isn't properly configured. Ensure that you have run
-    `gdk reconfigure` **AND** that you have stopped and restarted any instance
-    of `gdk run` or `gdk run xxx` that was running prior to the reconfigure step
+    `gdk reconfigure` **AND** `gdk restart webpack`.
 
     ---
 
-* I'm getting the following error when I try to run `gdk run` or `gdk run db`:
+* I see the following error when run `gdk tail` or `gdk tail webpack`:
 
     ```
     09:46:05 webpack.1               | npm ERR! argv "/usr/local/bin/node" "/usr/local/bin/npm" "run" "dev-server"
@@ -518,7 +571,7 @@ If you still encounter some errors, see the troubleshooting FAQ below:
 
     ---
 
-* I'm getting the following error when I try to run `gdk run` or `gdk run db`:
+* I see the following error when run `gdk tail` or `gdk tail webpack`:
 
     ```
     09:54:15 webpack.1               | > @ dev-server /Users/mike/Projects/gitlab-development-kit/gitlab
@@ -529,11 +582,11 @@ If you still encounter some errors, see the troubleshooting FAQ below:
     ...
     ```
 
-    This means you have not run `npm install` since updating your gitlab CE/EE
+    This means you have not run `yarn install` since updating your gitlab/gitlab-foss
     repository.  The `gdk update` command should have done this for you, but you
     can do so manually as well.
 
-* I'm getting the following error when I try to run `gdk run`:
+* I see the following error when run `gdk tail` or `gdk tail webpack`:
 
     ```
     14:52:22 webpack.1               | [nodemon] starting `node ./node_modules/.bin/webpack-dev-server --config config/webpack.config.js`

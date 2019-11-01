@@ -5,13 +5,14 @@
 
 require_relative 'gdk/env'
 require_relative 'gdk/config'
+require_relative 'gdk/dependencies'
 require_relative 'gdk/erb_renderer'
+require_relative 'gdk/logo'
 require_relative 'runit'
 
 module GDK
   PROGNAME = 'gdk'.freeze
   MAKE = RUBY_PLATFORM =~ /bsd/ ? 'gmake' : 'make'
-  SUPERVISOR = ENV['GDK_RUNIT'] == '1' ? :runit : :foreman
 
   # This function is called from bin/gdk. It must return true/false or
   # an exit code.
@@ -30,7 +31,11 @@ module GDK
 
     case subcommand = ARGV.shift
     when 'run'
-      exec('./run', *ARGV, chdir: $gdk_root)
+      abort <<~MSG
+        'gdk run' is no longer available; see doc/runit.md.
+
+        Use 'gdk start', 'gdk stop' and 'gdk tail' instead.
+      MSG
     when 'install'
       exec(MAKE, *ARGV, chdir: $gdk_root)
     when 'update'
@@ -72,6 +77,16 @@ module GDK
       end
 
       true
+    when 'config'
+      config_command = ARGV.shift
+      abort 'Usage: gdk config get path.to.the.conf.value' if config_command != 'get' || ARGV.empty?
+
+      begin
+        puts Config.new.dig(*ARGV)
+        true
+      rescue GDK::ConfigSettings::SettingUndefined
+        abort "Cannot get config for #{ARGV.join('.')}"
+      end
     when 'reconfigure'
       remember!($gdk_root)
       exec(MAKE, 'touch-examples', 'unlock-dependency-installers', 'postgresql-sensible-defaults', 'all', chdir: $gdk_root)
@@ -81,17 +96,30 @@ module GDK
       exec('redis-cli', '-s', File.join($gdk_root, 'redis/redis.socket'), *ARGV, chdir: $gdk_root)
     when 'env'
       GDK::Env.exec(ARGV)
-    when 'start', 'stop', 'restart', 'status'
-      assert_supervisor_runit!
+    when 'start', 'status'
+      Runit.sv(subcommand, ARGV)
+    when 'stop', 'restart'
+      # runit stop/restart leave processes hanging if they fail to stop gracefully
+      # the force-* counterparts kill at the end of the grace period
+      # gdk users would just kill these hanging processes anyway, best just do it for them
+      subcommand = 'force-' + subcommand
       Runit.sv(subcommand, ARGV)
     when 'tail'
-      assert_supervisor_runit!
       Runit.tail(ARGV)
+    when 'thin'
+      # We cannot use Runit.sv because that calls Kernel#exec. Use system instead.
+      system('gdk', 'stop', 'rails-web')
+      exec(
+        { 'RAILS_ENV' => 'development' },
+        *%W[bundle exec thin --socket=#{Dir.pwd}/gitlab.socket start],
+        chdir: 'gitlab'
+      )
     when 'help'
+      GDK::Logo.print
       puts File.read(File.join($gdk_root, 'HELP'))
       true
     else
-      puts "Usage: #{PROGNAME} run|init|install|update|reconfigure|psql|redis-cli|diff-config|version|help [ARGS...]"
+      puts "Usage: #{PROGNAME} start|status|stop|restart|init|install|update|reconfigure|tail|psql|redis-cli|diff-config|config|version|help [ARGS...]"
       false
     end
   end
@@ -102,11 +130,5 @@ module GDK
   rescue => ex
     warn ex
     false
-  end
-
-  def self.assert_supervisor_runit!
-    return if SUPERVISOR == :runit
-
-    abort "this subcommand is only available when using runit"
   end
 end

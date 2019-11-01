@@ -10,16 +10,12 @@ depends on our infrastructure. For non-GitLab employees you can see
 [Alternatives](#alternatives) below.
 
 1. Request GCP permission and SSH tunnel by
-  [creating an access request](https://gitlab.com/gitlab-com/access-requests/issues/new).
-  You can use
-  [this issue](https://gitlab.com/gitlab-com/access-requests/issues/382) as an
-  example.
+  [creating an access request](https://gitlab.com/gitlab-com/access-requests/issues/new?issuable_template=Single%20Person%20Access%20Request).
 
-  You need to request:
+   You need to request:
 
-  - IAM permission on GCP for `roles/container.admin` role for.
-  `gitlab-internal-153318` GCP project
-  - server access for `qa-tunnel.gitlab.info` and provide
+   - GCP Project `gitlab-internal-153318`. Create an access request to be added to the Google group `gcp-sandbox-gitlab-internal-kubernetes-admin-sg@gitlab.com` for the correct access to work with GKE. This access is part of baseline entitlements but if you do not have it, include it in your access request.
+   - server access for `qa-tunnel.gitlab.info` and provide
   them with your SSH public key.
 
 1. Once your account has been created, configure your SSH config `~/.ssh/config` to set the correct username.
@@ -36,7 +32,7 @@ depends on our infrastructure. For non-GitLab employees you can see
     > Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
     ```
 
-  If you're able to log in [without entering your passphrase](doc/howto/auto_devops/tips_and_troubleshooting.md#ssh-requires-a-passphrase), it means you can move on to the next step.
+   If you're able to log in [without entering your passphrase](doc/howto/auto_devops/tips_and_troubleshooting.md#ssh-requires-a-passphrase), it means you can move on to the next step.
 
 1. Set up the GDK for your workstation following [the preparation
   instructions](../prepare.md) and [setup instructions](../set-up-gdk.md)
@@ -83,10 +79,12 @@ gdk reconfigure
 Finally, run the below command to start all the services:
 
 ```bash
-port=8080 gdk run
+gdk start
 ```
 
 Now login as root using the Gitlab tunnel URL (`https://[PORT].qa-tunnel.gitlab.info`) and the default password. Once you are logged in, change the default password.
+
+Check [the troubleshooting guide](auto_devops/tips_and_troubleshooting.md) if you're still facing some problems.
 
 ### Secure your GitLab instance
 
@@ -134,7 +132,7 @@ flow.
 Since you may want to save yourself the hassle of manually setting up a whole
 project for Auto DevOps and validating everything works every time you make a
 change you can just run [the QA
-spec](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb).
+spec](https://gitlab.com/gitlab-org/gitlab/blob/master/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb).
 
 ### Install gcloud and kubectl
 
@@ -203,7 +201,7 @@ GITLAB_PASSWORD=<root-user-password> GCLOUD_REGION=us-central1 CHROME_HEADLESS=f
 ```
 
 More information about running QA tests can be found in
-[qa/README.md](https://gitlab.com/gitlab-org/gitlab-ee/blob/master/qa/README.md#how-can-i-use-it).
+[qa/README.md](https://gitlab.com/gitlab-org/gitlab/blob/master/qa/README.md#how-can-i-use-it).
 There are also other ways of running the QA specs that are documented in the
 [gitlab-qa project](https://gitlab.com/gitlab-org/gitlab-qa) but using the
 above approach is recommended as it will allow you to debug and iterate on the
@@ -219,7 +217,7 @@ NOTE: The GCP account you are using for `gcloud` will require the
 succeed.
 
 NOTE: [This
-test](https://gitlab.com/gitlab-org/gitlab-ce/blob/eb146e9abe08c3991b5a54237c24d15312c70ee8/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L9)
+test](https://gitlab.com/gitlab-org/gitlab/blob/a0d3691c8660c90a1db1bac3115f8c17a968f148/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L65)
 does teardown the K8s cluster at the end so after the test finishes it won't be
 possible to run the pipeline again unless you comment this out.
 
@@ -262,7 +260,7 @@ network.
 #### Massive bandwidth used by Auto DevOps
 
 Running [the Auto DevOps
-pipeline](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/vendor/gitlab-ci-yml/Auto-DevOps.gitlab-ci.yml)
+pipeline](https://gitlab.com/gitlab-org/gitlab/blob/a0d3691c8660c90a1db1bac3115f8c17a968f148/lib%2Fgitlab%2Fci%2Ftemplates%2FAuto-DevOps.gitlab-ci.yml)
 uses a lot of bandwidth doing the following with docker images:
 
 - Runner downloads images from docker hub

@@ -11,9 +11,9 @@ Make sure you follow all the guidelines and resolve all the dependencies listed 
 | Prerequisite      | Description                                                                                                                                                                                                                                                                                                                                                                 |
 | -------------- | -----------                                                                                                                                                                                                                                                                                                                                                                 |
 | User account   | Use a **non-root** Unix user to install GDK. This can be your normal user, but **DO NOT** run the installation as a root user.                                                                                                                                                                                                                                              |
-| Ruby           | <p>Use a Ruby version manager ([RVM](https://rvm.io/), [rbenv](https://github.com/rbenv/rbenv), [chruby](https://github.com/postmodern/chruby), etc.) to install the current [`gitlab-ce` Ruby version](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/.ruby-version).</p><p>**DO NOT** use the system Ruby.</p>                                                       |
+| Ruby           | <p>Use a Ruby version manager ([RVM](https://rvm.io/), [rbenv](https://github.com/rbenv/rbenv), [chruby](https://github.com/postmodern/chruby), etc.) to install the current [`gitlab` Ruby version](https://gitlab.com/gitlab-org/gitlab/blob/master/.ruby-version).</p><p>**DO NOT** use the system Ruby.</p>                                                       |
 | Terminal       | <p>Make sure to close and reopen the Terminal after installing a Ruby version manager to make sure it is activated.</p><p>You can check the active version with the command `ruby --version`.</p>                                                                                                                                                                           |
-| Bundler        | <p>Install the version of Bundler specified in [Gemfile.lock](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/Gemfile.lock). You will find it at the very bottom, right below the text `BUNDLED WITH`.</p><p> Use the command `gem install bundler -v <version>`, replacing `<version>` with the number you found above.</p>                                            |
+| Bundler        | <p>Install the version of Bundler specified in [Gemfile.lock](https://gitlab.com/gitlab-org/gitlab/blob/master/Gemfile.lock). You will find it at the very bottom, right below the text `BUNDLED WITH`.</p><p> Use the command `gem install bundler -v <version>`, replacing `<version>` with the number you found above.</p>                                            |
 | Git            | <p>We recommend using Git version 2.22 or higher.</p><p>git installation is covered in the instructions below</p>                                                                                                                                                                                                                                                           |
 | Node.js        | <p>Node.js **12.x** and Yarn 1.12 or newer.</p><p>Node.js and Yarn installation is covered in the instructions below. If your package manager does not have Node.js 12.x or yarn available, visit the official websites for [Node](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/en/docs/install/) for installation instructions.</p> |
 | Go             | <p>Go 1.12 or newer.</p><p>Go installation is covered in the instructions below. If your package manager does not have up-to-date versions of Go available, visit the official [Go](https://golang.org/doc/install) website for installation instructions.</p>                                                                                                              |
@@ -21,6 +21,7 @@ Make sure you follow all the guidelines and resolve all the dependencies listed 
 | PostgreSQL     | <p>PostgreSQL version 10.x.</p><p>PostgreSQL installation is covered in the instructions below.</p>                                                                                                                                                                                     |
 | GraphicsMagick | GraphicsMagick installation is covered in the instructions below.                                                                                                                                                                                                                                                                                                           |
 | Exiftool       | Exiftool installation is covered in the instructions below.                                                                                                                                                                                                                                                                                                           |
+| Runit          | Runit installation is covered in the instructions below.                                                                                                                                                                                                                                                                                                           |
 
 ### Platform-specific setup
 
@@ -81,26 +82,27 @@ Please read [the prerequisites for all platforms](#prerequisites-for-all-platfor
 1. Install the rest of the dependencies:
    ```
    # Add apt-add-repository helper script
+   sudo apt-get update
    sudo apt-get install software-properties-common
    [[ $(lsb_release -sr) < "18.04" ]] && sudo apt-get install python-software-properties
    # This PPA contains an up-to-date version of Go
    sudo add-apt-repository ppa:longsleep/golang-backports
    # Setup path for Go
-   export PATH="/usr/lib/go-1.12/bin:$PATH"
+   export GDK_GO_VERSION="1.12"
+   export PATH="/usr/lib/go-${GDK_GO_VERSION}/bin:$PATH"
    # This PPA contains an up-to-date version of git
    sudo add-apt-repository ppa:git-core/ppa
-   sudo apt-get update
    sudo apt-get install git postgresql postgresql-contrib libpq-dev redis-server \
-     libicu-dev cmake g++ libre2-dev libkrb5-dev libsqlite3-dev golang-1.12-go ed \
+     libicu-dev cmake g++ libre2-dev libkrb5-dev libsqlite3-dev golang-${GDK_GO_VERSION}-go ed \
      pkg-config graphicsmagick runit libimage-exiftool-perl rsync
    ```
 
-   > ℹ️ Ubuntu 18.04 and beyond doesn't have python-software-properties as a separate package.
+   > ℹ️ Ubuntu 18.04 (Bionic Beaver) and beyond doesn't have python-software-properties as a separate package.
+
+   > ℹ️ Ubuntu 14.04 (Trusty Tahr) doesn't have the `libre2-dev` package available, but
+you can [install re2 manually](https://github.com/google/re2/wiki/Install).
 
 1. You're all set now. [Go to next steps](#next-steps).
-
-> ℹ️ Ubuntu 14.04 (Trusty Tahr) doesn't have the `libre2-dev` package available, but
-you can [install re2 manually](https://github.com/google/re2/wiki/Install).
 
 #### Arch Linux
 
@@ -274,7 +276,7 @@ make -j4 # adjust according to your available CPU capacity
 sudo make install
 ```
 
-Install the current `gitlab-ce` Ruby version using [RVM](https://rvm.io/):
+Install the current `gitlab` Ruby version using [RVM](https://rvm.io/):
 
 ```
 # This example uses Ruby 2.6.3. Substitute with the current version if different.

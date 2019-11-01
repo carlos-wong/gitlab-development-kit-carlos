@@ -2,6 +2,12 @@
 
 This document will instruct you to set up GitLab Geo using GDK.
 
+Geo allows you to replicate a whole GitLab instance. Customers use this for
+Disaster Recovery, as well as to offload read-only requests to secondary
+instances. For more, see
+[GitLab Geo](https://about.gitlab.com/solutions/geo/) or
+[Replication (Geo)](https://docs.gitlab.com/ee/administration/geo/replication/).
+
 ## Prerequisites
 
 Development on GitLab Geo requires two Enterprise Edition GDK
@@ -21,10 +27,25 @@ echo 3002 > port
 echo 3807 > webpack_port
 # Assuming your primary GDK instance lives in parallel folders:
 gdk install gitlab_repo=../gdk-ee/gitlab
-# Cancel (Ctrl-C) seeding when it starts since we will delete the data anyway
-gdk run db
+```
 
-# In another terminal window
+When seeding begins, cancel it (Ctrl-C) since we will delete the data anyway.
+
+Add the following to `gdk.yml` file:
+
+```yaml
+geo:
+  enabled: true
+tracer:
+  jaeger:
+    enabled: false
+```
+
+Then run the following commands:
+
+```bash
+unlink services/jaeger
+gdk start # or just: gdk start postgresql-geo
 make geo-setup
 ```
 
@@ -99,7 +120,7 @@ You can add the tracking database to the primary node by running:
 
 ```bash
 # From the gdk-ee folder:
-gdk run db
+gdk start
 
 # In another terminal window
 make geo-setup
@@ -110,7 +131,7 @@ to operate *as* a primary except in tests where the current Geo node has been
 stubbed.
 
 To ensure the tracking database is started, restart GDK. You will need to use
-`gdk run db geo_db` (at a minimum) or `gdk run` to be able to run the tests.
+`gdk start` to be able to run the tests.
 
 ## Copy database encryption key
 
@@ -163,7 +184,7 @@ bundle exec rails runner 'puts GeoNode.current_node_name'
 
 ## Useful aliases
 
-Customize to your liking. Requires `gdk run` to be running.
+Customize to your liking. Requires `gdk start` to be running.
 
 ```bash
 alias geo_primary_migrate="bundle install && bin/rake db:migrate db:test:prepare geo:db:migrate geo:db:test:prepare"
@@ -255,7 +276,7 @@ If your local primary is in `~/Developer/gdk-ee`:
 
 ```bash
 cd ~/Developer/gdk-ee
-gdk run # In another tab, if it's not already running
+gdk start
 make postgresql/geo-fdw/test/rebuild
 ```
 
@@ -263,8 +284,13 @@ And if your local secondary is in `~/Developer/gdk-geo`:
 
 ```bash
 cd ~/Developer/gdk-geo
-gdk run # In another tab, if it's not already running
+gdk start
 make postgresql/geo-fdw/development/rebuild
 ```
 
 Also see [Useful aliases](#useful-aliases) above.
+
+## Enabling Docker Registry replication
+
+For information on enabling Docker Registry replication in GDK, see
+[Docker Registry replication](geo-docker-registry-replication.md).

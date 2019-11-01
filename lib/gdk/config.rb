@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'etc'
+require 'pathname'
 require_relative 'config_settings'
 
 module GDK
@@ -8,26 +9,39 @@ module GDK
     FILE = 'gdk.yml'
 
     repositories do |r|
-      r.gitlab 'https://gitlab.com/gitlab-org/gitlab-ce.git'
+      r.gitlab 'https://gitlab.com/gitlab-org/gitlab.git'
       r.gitlab_shell 'https://gitlab.com/gitlab-org/gitlab-shell.git'
       r.gitlab_workhorse 'https://gitlab.com/gitlab-org/gitlab-workhorse.git'
       r.gitaly 'https://gitlab.com/gitlab-org/gitaly.git'
-      r.gitaly_proto 'https://gitlab.com/gitlab-org/gitaly-proto.git'
       r.gitlab_pages 'https://gitlab.com/gitlab-org/gitlab-pages.git'
       r.gitlab_docs 'https://gitlab.com/gitlab-com/gitlab-docs.git'
     end
 
-    gdk_root { Dir.pwd }
+    git_repositories do
+      # This list in not exhaustive yet, as some git repositories are based on
+      # a fake GOPATH inside a projects sub directory
+      %w[. gitlab]
+        .map { |d| File.join(gdk_root, d) }
+        .select { |d| Dir.exist?(d) }
+    end
 
-    repositories_root { File.join(config.gdk_root, 'repositories') }
+    gdk_root { Pathname.pwd }
+
+    gdk do |g|
+      g.overwrite_changes false
+      g.ignore_foreman { read!('.ignore-foreman') || false }
+    end
+
+    repositories_root { config.gdk_root.join('repositories') }
 
     hostname do
       next "#{config.auto_devops.gitlab.port}.qa-tunnel.gitlab.info" if config.auto_devops.enabled
-      env!('host') || read!('hostname') || read!('host') || 'localhost'
+      env!('host') || read!('hostname') || read!('host') || '0.0.0.0'
     end
 
     port do
       next 443 if config.auto_devops.enabled
+
       env!('port') || read!('port') || 3000
     end
 
@@ -47,7 +61,32 @@ module GDK
     username { Etc.getlogin }
 
     webpack do |w|
+      w.host { read!('webpack_host') || '0.0.0.0' }
       w.port { read!('webpack_port') || 3808 }
+    end
+
+    workhorse do |w|
+      w.configured_port 3333
+
+      w.__active_host do
+        if config.auto_devops? || config.nginx?
+          '0.0.0.0'
+        else
+          # Workhorse is the user-facing entry point whenever neither nginx nor
+          # AutoDevOps is used, so in that situation use the configured GDK hostname.
+          config.hostname
+        end
+      end
+
+      w.__active_port do
+        if config.auto_devops? || config.nginx?
+          config.workhorse.configured_port
+        else
+          # Workhorse is the user-facing entry point whenever neither nginx nor
+          # AutoDevOps is used, so in that situation use the configured GDK port.
+          config.port
+        end
+      end
     end
 
     registry do |r|
@@ -119,7 +158,6 @@ module GDK
     nginx do |n|
       n.enabled false
       n.bin { find_executable!('nginx') || '/usr/sbin/nginx' }
-      n.workhorse_port 3333
       n.ssl do |s|
         s.certificate 'localhost.crt'
         s.key 'localhost.key'
@@ -131,29 +169,41 @@ module GDK
     end
 
     postgresql do |p|
+      p.port { read!('postgresql_port') || 5432 }
       p.bin_dir { cmd!(%w[support/pg_bindir]) }
       p.replication_user 'gitlab_replication'
-      p.dir { "#{config.gdk_root}/postgresql" }
-      p.data_dir { "#{config.postgresql.dir}/data" }
-      p.replica_dir { "#{config.gdk_root}/postgresql-replica" }
-      p.geo_dir { "#{config.gdk_root}/postgresql-geo" }
-    end
-
-    gitaly do |g|
-      g.assembly_dir { "#{config.gdk_root}/gitaly/assembly" }
-      g.address do
-        File.join(config.gdk_root, 'gitaly.socket')
+      p.dir { config.gdk_root.join('postgresql') }
+      p.data_dir { config.postgresql.dir.join('data') }
+      p.replica_dir { config.gdk_root.join('postgresql-replica') }
+      p.geo do |g|
+        g.port { read!('postgresql_geo_port') || 5432 }
+        g.dir { config.gdk_root.join('postgresql-geo') }
       end
     end
 
+    gitaly do |g|
+      g.address { config.gdk_root.join('gitaly.socket') }
+      g.assembly_dir { config.gdk_root.join('gitaly', 'assembly') }
+      g.config_file { config.gdk_root.join('gitaly', 'gitaly.config.toml') }
+      g.internal_socket_dir { config.gdk_root.join('gitaly')}
+      g.log_dir { config.gdk_root.join('log', 'gitaly') }
+    end
+
     praefect do |p|
-      p.enabled { read!('praefect_enabled') || false }
-      p.config_file { File.join(config.gdk_root, "gitaly", "praefect.config.toml") }
-      p.address { File.join(config.gdk_root, 'praefect.socket') }
+      p.address { config.gdk_root.join('praefect.socket') }
+      p.config_file { config.gdk_root.join("gitaly", "praefect.config.toml") }
+      p.enabled { true }
+      p.internal_socket_dir { config.gdk_root.join('gitaly', 'praefect') }
+      p.node_count { 1 }
       p.nodes do
-        gitaly_nodes = (ENV["PRAEFECT_GITALY_NODES"] || "3").to_i
-        (0..gitaly_nodes-1).map do |i|
-          { storage: "praefect-internal-#{i}", address: File.join(config.gdk_root, "gitaly-praefect-#{i}.socket") }
+        config_array!(config.praefect.node_count) do |n, i|
+          n.address { config.gdk_root.join("gitaly-praefect-#{i}.socket") }
+          n.config_file { "gitaly/gitaly-#{i}.praefect.toml" }
+          n.log_dir { config.gdk_root.join("log", "praefect-gitaly-#{i}") }
+          n.primary { i == 0 }
+          n.service_name { "praefect-gitaly-#{i}" }
+          n.storage { "praefect-internal-#{i}" }
+          n.storage_dir { i == 0 ? config.repositories_root : File.join(config.repositories_root, storage) }
         end
       end
     end

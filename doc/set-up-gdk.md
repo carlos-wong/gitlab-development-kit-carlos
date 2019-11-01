@@ -2,155 +2,188 @@
 
 > 🚨**Note:** Before undertaking these steps, be sure you have [prepared your system](./prepare.md).🚨
 
-## Clone GitLab Development Kit repository
+To get GDK up and running:
 
-Make sure that none of the directories 'above' GitLab Development Kit
-contain 'problematic' characters such as ` ` and `(`. For example,
-`/home/janedoe/projects` is OK, but `/home/janedoe/my projects` will
-cause problems.
+1. [Install the `gitlab-development-kit` gem](#install-the-gitlab-development-kit-gem)
+1. [Initialize a new GDK directory](#initialize-a-new-gdk-directory)
+1. [Install GDK components](#install-gdk-components)
 
-Execute the following with the Ruby version manager of your choice (`rvm`, `rbenv`, `chruby`, etc.) with the current [`gitlab-ce` Ruby version](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/.ruby-version):
+## Install the `gitlab-development-kit` gem
 
-```
+Execute the following with the Ruby version manager of your choice (`rvm`, `rbenv`, `chruby`, etc.) with the current [`gitlab` Ruby version](https://gitlab.com/gitlab-org/gitlab/blob/master/.ruby-version):
+
+```sh
 gem install gitlab-development-kit
-gdk init
 ```
 
-The GDK is now cloned into `./gitlab-development-kit`. Enter that directory. Note that this is the default instantiation directory for the `gdk init` command.
+## Initialize a new GDK directory
 
-If you plan to work with **CE** and **EE** versions side by side, it is recommended that you name the GDK instance during `init` and not use the default directory name. Pick a good naming convention that will allow you to differentiate and switch between the two versions easily.
+1. Change into the directory where you store your source code. The path used for
+   GDK must contain only alphanumeric characters.
 
-For example:
-```
-gdk init gdk-ce
-```
+1. To initialize GDK into:
 
-## Install GDK
+  - The default directory (`./gitlab-development-kit`), run:
 
-The `gdk install` command clones the repositories, installs the Gem bundles, and sets up basic configuration files. The command must be run within the directory GDK was initialized into. For example, if you ran `gdk init gdk-ce`, you would run `cd ./gdk-ce && gdk install`.
+    ```sh
+    gdk init
+    ```
 
-Use `gdk install shallow_clone=true` for faster clone and lesser disk-space. Clone will be done using [`git clone --depth=1`](https://www.git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt).
+  - A custom directory, pass a directory name. For example, to initialize into
+    the `gdk` directory, run:
 
-Pick one of the installation methods below. If you don't have write access to the upstream repositories, you should use the 'Develop in a fork'
-method.
+      ```sh
+      gdk init my_gitlab_development_kit
+      ```
 
-In either case, use your Ruby version manager to run `gdk install` with the `gitlab-ce` Ruby version. The `gdk install` command will install from `https://gitlab.com/gitlab-org/gitlab-ce.git` by default.
+## Install GDK components
 
-### Option 1: Develop in a fork
+1. Change into the newly created GDK directory.  For example:
 
-```
-# Set up GDK with 'origin' pointing to your gitlab-ce fork.
-# Replace MY-FORK with your namespace
-gdk install gitlab_repo=https://gitlab.com/MY-FORK/gitlab-ce.git
-support/set-gitlab-upstream
-```
+   ```sh
+   cd gitlab-development-kit
+   ```
+
+   If you specified a custom directory like `my_gitlab_development_kit` above, be
+   sure to use that instead.
+
+1. Install the necessary components (repositories, Ruby gem bundles, and
+   configuration) using `gdk install`.
+
+   - For those who have write access to the [GitLab.org group](https://gitlab.com/gitlab-org)
+   we recommend [Develop against the GitLab project](#develop-against-the-gitlab-project-default) (default)
+
+   - Other options in order of recommendation:
+
+     1. [Develop in your own GitLab fork](#develop-in-your-own-gitlab-fork)
+     1. [Develop against the GitLab project](#develop-against-the-gitlab-project-default)
+     1. [Develop against the GitLab FOSS project](#develop-against-the-gitlab-foss-project)
+
+### Develop against the GitLab project (default)
+
+- HTTP, run:
+
+  ```sh
+  gdk install
+  ```
+
+- SSH, run:
+
+  ```sh
+  gdk install gitlab_repo=git@gitlab.com:gitlab-org/gitlab.git
+  ```
+
+Use `gdk install shallow_clone=true` for a faster clone that consumes less disk-space.
+The clone will be done using [`git clone --depth=1`](https://www.git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt).
+
+### Develop against the GitLab FOSS project
+
+- HTTP, run:
+
+  ```sh
+  gdk install gitlab_repo=https://gitlab.com/gitlab-org/gitlab-foss.git
+  ```
+
+- SSH, run:
+
+  ```sh
+  gdk install gitlab_repo=git@gitlab.com:gitlab-org/gitlab-foss.git
+  ```
+
+Use `gdk install shallow_clone=true` for a faster clone that consumes less disk-space.
+The clone will be done using [`git clone --depth=1`](https://www.git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt).
+
+### Develop in your own GitLab fork
+
+- HTTP, run:
+
+  ```sh
+  # Replace <YOUR-NAMESPACE> with your namespace
+  gdk install gitlab_repo=https://gitlab.com/<YOUR-NAMESPACE>/gitlab.git
+  support/set-gitlab-upstream
+  ```
+
+- SSH, run:
+
+  ```sh
+  # Replace <YOUR-NAMESPACE> with your namespace
+  gdk install gitlab_repo=git@gitlab.com:<YOUR-NAMESPACE>/gitlab.git
+  support/set-gitlab-upstream
+  ```
 
 The `set-gitlab-upstream` script creates a remote named `upstream` for
-[the canonical GitLab CE
-repository](https://gitlab.com/gitlab-org/gitlab-ce). It also modifies
-`gdk update` (See [Update gitlab and gitlab-shell
-repositories](./howto/gdk_commands.md#update-gitlab-and-gitlab-shell-repositories))
-to pull down from the upstream repository instead of your fork, making it
-easier to keep up-to-date with the project.
+[the canonical GitLab repository](https://gitlab.com/gitlab-org/gitlab). It also
+modifies `gdk update` (See [Update gitlab and gitlab-shell repositories](./howto/gdk_commands.md#update-gitlab-and-gitlab-shell-repositories))
+to pull down from the upstream repository instead of your fork, making it easier
+to keep up-to-date with the project.
 
-If you want to push changes from upstream to your fork, run `gdk update` and then `git push origin` from the `gitlab` directory.
+If you want to push changes from upstream to your fork, run `gdk update` and then
+`git push origin` from the `gitlab` directory.
 
-### Option 2: Develop in the main repo
-
-Alternatively, you can clone all components from their official source.
-
-```
-gdk install
-```
-
-### Common errors during installation and troubleshooting
+## Common errors during installation and troubleshooting
 
 During `gdk install` process, you may encounter some dependencies related errors. Please refer to the [Troubleshooting page](./howto/troubleshooting.md) or [open an issue on GDK tracker](https://gitlab.com/gitlab-org/gitlab-development-kit/issues) if you get stuck.
 
-## GitLab Enterprise Edition
-
-The recommended way to do development on GitLab Enterprise Edition is
-to create a separate GDK directory for it. Below we call that
-directory `gdk-ee` following the naming convention from above. We will configure GDK to start GitLab on port 3001
-instead of 3000 so that you can run GDK EE next to CE without port
-conflicts.
-
-```
-gem install gitlab-development-kit
-gdk init gdk-ee
-cd gdk-ee
-echo 3001 > port
-echo 3809 > webpack_port
-echo 3011 > gitlab_pages_port
-gdk install gitlab_repo=https://gitlab.com/gitlab-org/gitlab-ee.git
-```
-
-Now you can start GitLab EE with `gdk run` in the `gdk-ee` directory and you
-will not have port conflicts with a separate GDK instance for CE that
-might still be running.
+## GitLab Enterprise Features
 
 Instructions to generate a developer license can be found in the
 onboarding document: https://about.gitlab.com/handbook/developer-onboarding/#working-on-gitlab-ee
 
-The license key generator is only available for GitLab employees, who should use the "Sign in with GitLab" link using their dev.gitlab.com account.
-
-### GitLab Geo
-
-Check the [GitLab Geo instructions](./howto/geo.md).
+The license key generator is only available for GitLab employees, who should use the "Sign in with GitLab" link using their dev.gitlab.org account.
 
 ## Post-installation
 
 Start GitLab and all required services:
 
 ```sh
-gdk run
+gdk start
 ```
 
-To start only the database services, use:
+To stop the Rails app, which saves memory (useful when running tests):
 
 ```sh
-gdk run db
+gdk stop rails
 ```
 
-To start database services and gitaly, use:
+To access GitLab, you may now go to http://localhost:3000 in your
+browser. The development login credentials are `root` and
+`5iveL!fe`.
 
-```sh
-gdk run db gitaly
+GDK comes with a number of settings, and most users will use the
+default values, but you are able to override these in `gdk.yml` in the
+GDK root.
+
+For example, to change the port you can set this in your `gdk.yml`:
+
+```yaml
+port: 3001
 ```
 
-To start only the app (assuming the database services are already running), use:
+And run the following command to apply:
 
 ```sh
-gdk run app
-```
-
-To access GitLab you may now go to http://localhost:3000 in your browser. The development login credentials are `root` and `5iveL!fe`. If you followed the GitLab Enterprise Edition instructions above, you will need to access http://localhost:3001 in your browser.
-
-If you like, you can override the port, host, or relative URL root by adding the appropriate file to the GDK root. You'll need to reconfigure and restart the GDK for these changes to take effect.
-
-```sh
-echo 4000 > port
-
-# This can be useful if you plan to use GDK inside a Docker container
-echo 0.0.0.0 > host
-
-echo /gitlab > relative_url_root
-
 gdk reconfigure
 ```
 
-You can also override the host name used by the Rails instance (specified by the `host` value in `gitlab/config/gitlab.yml`).
+You can find a bunch of other settings that are configurable in `gdk.example.yml`.
 
-```sh
- echo my.gitlab.dev > hostname
+Read the [configuration document](howto/configuration.md) for more details.
 
- gdk reconfigure
- ```
+After installation [learn how to use GDK](howto/README.md) enable other features.
 
-To enable the OpenLDAP server, see the OpenLDAP instructions in this [README](./howto/ldap.md).
+### Running GitLab and GitLab FOSS concurrently
 
-After installation [learn how to use GDK](./howto/README.md).
+To have multiple GDK instances running concurrently, for example to
+test GitLab and GitLab FOSS, initialize each into a separate GDK
+folder. To run them simultaneously, make sure they don't use
+conflicting port numbers.
 
-### Enabling GitLab CI/CD in GDK
+You can for example use the following `gdk.yml` in one of both GDKs.
 
-If you want to work on GitLab CI/CD, see [Using GitLab Runner with GDK](howto/runner.md).
+```yaml
+port: 3001
+webpack:
+  port: 3809
+gitlab_pages:
+  port: 3011
+```

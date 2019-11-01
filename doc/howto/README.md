@@ -25,7 +25,7 @@ to learn how to develop GitLab CE.
 ## Special topics
 
 - [Simulate slow or broken repository storage](simulate_storage.md)
-- [MySQL](mysql.md)
+- [PostgreSQL](postgresql.md)
 - [GitLab Geo](geo.md)
 - [LDAP](ldap.md)
 - [Elasticsearch](elasticsearch.md)
@@ -41,3 +41,5 @@ to learn how to develop GitLab CE.
 - [Google OAuth2](google-oauth2.md)
 - [Unicorn](unicorn.md)
 - [Debugging with Pry](pry.md)
+- [Asset Proxy / Camo Server](asset_proxy.md)
+- [Email](email.md)

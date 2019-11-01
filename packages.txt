@@ -12,7 +12,6 @@ wget
 cmake
 ed
 g++
-git
 libicu-dev
 libkrb5-dev
 libpq-dev
@@ -20,6 +19,7 @@ libre2-dev
 libreadline-dev
 libsqlite3-dev
 libssl-dev
+openssh-server
 pkg-config
 postgresql
 postgresql-contrib
@@ -30,3 +30,4 @@ apt-transport-https
 net-tools
 psmisc
 rsync
+runit

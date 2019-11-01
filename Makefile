@@ -11,10 +11,8 @@ gitlab_shell_clone_dir = go-gitlab-shell/src/gitlab.com/gitlab-org/gitlab-shell
 gitlab_workhorse_repo = https://gitlab.com/gitlab-org/gitlab-workhorse.git
 gitlab_workhorse_clone_dir = gitlab-workhorse/src/gitlab.com/gitlab-org/gitlab-workhorse
 gitaly_repo = https://gitlab.com/gitlab-org/gitaly.git
-gitaly_proto_repo = https://gitlab.com/gitlab-org/gitaly-proto.git
 gitaly_gopath = $(abspath ./gitaly)
 gitaly_clone_dir = ${gitaly_gopath}/src/gitlab.com/gitlab-org/gitaly
-gitaly_proto_clone_dir = ${gitaly_gopath}/src/gitlab.com/gitlab-org/gitaly-proto
 gitlab_pages_repo = https://gitlab.com/gitlab-org/gitlab-pages.git
 gitlab_pages_clone_dir = gitlab-pages/src/gitlab.com/gitlab-org/gitlab-pages
 gitlab_docs_repo = https://gitlab.com/gitlab-com/gitlab-docs.git
@@ -36,7 +34,6 @@ https = $(shell (${auto_devops_enabled} && echo 'true') || cat https_enabled 2>/
 relative_url_root = $(shell cat relative_url_root 2>/dev/null || echo '')
 username = $(shell whoami)
 sshd_bin = $(shell which sshd)
-webpack_port = $(shell cat webpack_port 2>/dev/null || echo '3808')
 registry_enabled = $(shell cat registry_enabled 2>/dev/null || echo 'false')
 registry_host = $(if $(filter true,$(auto_devops_enabled)),"$(auto_devops_registry_port).qa-tunnel.gitlab.info",$(shell cat registry_host 2>/dev/null || echo '127.0.0.1'))
 registry_external_port = $(if $(filter true,$(auto_devops_enabled)),443,$(shell cat registry_external_port 2>/dev/null || echo '5000'))
@@ -44,13 +41,10 @@ registry_port = $(shell cat registry_port 2>/dev/null || echo '5000')
 gitlab_from_container = $(shell [ "$(shell uname)" = "Linux" ] && echo 'localhost' || echo 'docker.for.mac.localhost')
 postgresql_port = $(shell cat postgresql_port 2>/dev/null || echo '5432')
 postgresql_geo_port = $(shell cat postgresql_geo_port 2>/dev/null || echo '5432')
-object_store_enabled = $(shell cat object_store_enabled 2>/dev/null || echo 'false')
-object_store_port = $(shell cat object_store_port 2>/dev/null || echo '9000')
 gitlab_pages_port = $(shell cat gitlab_pages_port 2>/dev/null || echo '3010')
-rails_bundle_install_cmd := bundle install --jobs 4 --without production $(if $(shell mysql_config --libs 2>/dev/null),--with,--without) mysql
+rails_bundle_install_cmd := bundle install --jobs 4 --without production
 elasticsearch_version = 6.5.1
 elasticsearch_tar_gz_sha1 = 5903e1913a7c96aad96a8227517c40490825f672
-ruby_version = $(shell ruby -e 'puts RUBY_VERSION')
 workhorse_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_WORKHORSE_VERSION")
 gitlab_shell_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITLAB_SHELL_VERSION")
 gitaly_version = $(shell bin/resolve-dependency-commitish "${gitlab_development_root}/gitlab/GITALY_SERVER_VERSION")
@@ -63,24 +57,19 @@ ifeq ($(shallow_clone),true)
 git_depth_param = --depth=1
 endif
 
-export GDK_RUNIT=0 # Several scripts in support/ still depend on 'gdk run'
+all: preflight-checks gitlab-setup gitlab-shell-setup gitlab-workhorse-setup gitlab-pages-setup support-setup gitaly-setup prom-setup object-storage-setup gitlab-elasticsearch-indexer-setup
 
-all: gitlab-setup gitlab-shell-setup gitlab-workhorse-setup gitlab-pages-setup support-setup gitaly-setup prom-setup object-storage-setup gitlab-elasticsearch-indexer-setup
+.PHONY: preflight-checks
+preflight-checks: rake
+	rake $@
+
+.PHONY: rake
+rake:
+	command -v $@ > /dev/null || gem install $@
 
 # Set up the GitLab Rails app
 
-check-ruby-version:
-	@if [ "${gitlab_repo_ruby_version}" != "${ruby_version}" ]; then \
-		echo "WARNING: You're using Ruby version ${ruby_version}."; \
-		echo "WARNING: However we recommend using Ruby version ${gitlab_repo_ruby_version} for this repository."; \
-		test "${IGNORE_INSTALL_WARNINGS}" = "true" || \
-		(echo "WARNING: Press <ENTER> to continue installation or <CTRL-C> to abort" && read v;) \
-	fi
-
-check-go-version:
-	bin/$@
-
-gitlab-setup: gitlab/.git check-ruby-version gitlab-config bundler .gitlab-bundle yarn .gitlab-yarn .gettext
+gitlab-setup: gitlab/.git .ruby-version gitlab-config .gitlab-bundle .gitlab-yarn .gettext
 
 gitlab/.git:
 	git clone ${git_depth_param} ${gitlab_repo} ${gitlab_clone_dir}
@@ -140,22 +129,10 @@ gitlab/public/uploads:
 	git -C ${gitlab_development_root}/gitlab checkout locale/*/gitlab.po
 	touch $@
 
-.PHONY: bundler
-bundler:
-	command -v $@ > /dev/null || gem install $@ -v 1.17.3
-
-.PHONY: yarn
-yarn:
-	@command -v $@ > /dev/null || {\
-		echo "Error: Yarn executable was not detected in the system.";\
-		echo "Download Yarn at https://yarnpkg.com/en/docs/install";\
-		exit 1;\
-	}
-
 # Set up gitlab-shell
 
-gitlab-shell-setup: symlink-gitlab-shell ${gitlab_shell_clone_dir}/.git gitlab-shell/config.yml bundler .gitlab-shell-bundle gitlab-shell/.gitlab_shell_secret
-	if [ -x gitlab-shell/bin/compile ] ; then gitlab-shell/bin/compile; fi
+gitlab-shell-setup: symlink-gitlab-shell ${gitlab_shell_clone_dir}/.git gitlab-shell/config.yml .gitlab-shell-bundle gitlab-shell/.gitlab_shell_secret
+	make -C gitlab-shell build
 
 symlink-gitlab-shell:
 	support/symlink gitlab-shell ${gitlab_shell_clone_dir}
@@ -181,16 +158,19 @@ gitlab-shell/.gitlab_shell_secret:
 
 # Set up gitaly
 
-gitaly-setup: gitaly/bin/gitaly gitaly/gitaly.config.toml ${gitaly_proto_clone_dir}/.git
+gitaly-setup: gitaly/bin/gitaly gitaly/gitaly.config.toml gitaly/praefect.config.toml
 
 ${gitaly_clone_dir}/.git:
 	git clone --quiet --branch "${gitaly_version}" ${git_depth_param} ${gitaly_repo} ${gitaly_clone_dir}
 
-${gitaly_proto_clone_dir}/.git:
-	git clone ${git_depth_param} --quiet ${gitaly_proto_repo} ${gitaly_proto_clone_dir}
-
-gitaly/gitaly.config.toml: support/templates/gitaly.config.toml.erb
+.PHONY: gitaly/gitaly.config.toml
+gitaly/gitaly.config.toml:
 	rake gitaly/gitaly.config.toml
+
+
+.PHONY: gitaly/praefect.config.toml
+gitaly/praefect.config.toml:
+	rake gitaly/praefect.config.toml
 
 prom-setup:
 	if [ "$(uname -s)" = "Linux" ]; then \
@@ -223,7 +203,7 @@ gitlab-docs-bundle:
 	cd ${gitlab_development_root}/gitlab-docs && bundle install --jobs 4
 
 symlink-gitlab-docs:
-	support/symlink ${gitlab_development_root}/gitlab-docs/content/docs ${gitlab_development_root}/gitlab/doc
+	support/symlink ${gitlab_development_root}/gitlab-docs/content/ee ${gitlab_development_root}/gitlab/doc
 
 gitlab-docs-update: gitlab-docs/.git/pull gitlab-docs-bundle gitlab-docs/nanoc.yaml
 
@@ -243,14 +223,15 @@ self-update: unlock-dependency-installers
 
 # Update gitlab, gitlab-shell, gitlab-workhorse, gitlab-pages and gitaly
 # Pull gitlab directory first since dependencies are linked from there.
-update: ensure-postgres-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-elasticsearch-indexer-update
+update: stop-foreman ensure-databases-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-elasticsearch-indexer-update
 
-ensure-postgres-running:
-	@test -f ${postgres_data_dir}/postmaster.pid || \
-	test "${IGNORE_INSTALL_WARNINGS}" = "true" || \
-	(echo "WARNING: Postgres is not running. Run 'gdk run db' or 'gdk run' in another shell." && echo "WARNING: Hit <ENTER> to ignore or <CTRL-C> to quit." && read v;)
+stop-foreman:
+	@pkill foreman || true
 
-gitlab-update: ensure-postgres-running gitlab/.git/pull gitlab-setup
+ensure-databases-running:
+	@gdk start rails-migration-dependencies
+
+gitlab-update: ensure-databases-running gitlab/.git/pull gitlab-setup
 	cd ${gitlab_development_root}/gitlab && \
 		bundle exec rake db:migrate db:test:prepare
 
@@ -272,22 +253,18 @@ gitlab-shell/.git/pull:
 gitaly-update: gitaly/.git/pull gitaly-clean gitaly/bin/gitaly
 
 .PHONY: gitaly/.git/pull
-gitaly/.git/pull: ${gitaly_clone_dir}/.git ${gitaly_proto_clone_dir}/.git
+gitaly/.git/pull: ${gitaly_clone_dir}/.git
 	cd ${gitaly_clone_dir} && \
 		git stash && \
 		git fetch --all --tags --prune && \
 		git checkout "${gitaly_version}"
-	cd ${gitaly_proto_clone_dir} && \
-		git stash && \
-		git checkout master && \
-		git pull --ff-only
 
 gitaly-clean:
 	rm -rf ${gitaly_assembly_dir}
 	rm -rf gitlab/tmp/tests/gitaly
 
 .PHONY: gitaly/bin/gitaly
-gitaly/bin/gitaly: check-go-version ${gitaly_clone_dir}/.git
+gitaly/bin/gitaly: ${gitaly_clone_dir}/.git
 	$(MAKE) -C ${gitaly_clone_dir} assemble ASSEMBLY_ROOT=${gitaly_assembly_dir} BUNDLE_FLAGS=--no-deployment BUILD_TAGS="${tracer_build_tags}"
 	mkdir -p ${gitlab_development_root}/gitaly/bin
 	ln -sf ${gitaly_assembly_dir}/bin/* ${gitlab_development_root}/gitaly/bin
@@ -296,7 +273,7 @@ gitaly/bin/gitaly: check-go-version ${gitaly_clone_dir}/.git
 
 # Set up supporting services
 
-support-setup: .ruby-version foreman Procfile redis gitaly-setup jaeger-setup postgresql openssh-setup nginx-setup registry-setup elasticsearch-setup
+support-setup: Procfile redis gitaly-setup jaeger-setup postgresql openssh-setup nginx-setup registry-setup elasticsearch-setup
 	@echo ""
 	@echo "*********************************************"
 	@echo "************** Setup finished! **************"
@@ -421,10 +398,6 @@ postgresql/geo-fdw/%/rebuild:
 	$(MAKE) postgresql/geo-fdw/$*/drop || true
 	$(MAKE) postgresql/geo-fdw/$*/create
 
-.PHONY: foreman
-foreman:
-	command -v $@ > /dev/null || gem install $@
-
 .ruby-version:
 	ln -s ${gitlab_development_root}/gitlab/.ruby-version ${gitlab_development_root}/$@
 
@@ -447,7 +420,7 @@ gitlab-workhorse-clean-bin:
 	rm -rf gitlab-workhorse/bin
 
 .PHONY: gitlab-workhorse/bin/gitlab-workhorse
-gitlab-workhorse/bin/gitlab-workhorse: check-go-version ${gitlab_workhorse_clone_dir}/.git
+gitlab-workhorse/bin/gitlab-workhorse: ${gitlab_workhorse_clone_dir}/.git
 	$(MAKE) -C ${gitlab_workhorse_clone_dir} install PREFIX=${gitlab_development_root}/gitlab-workhorse
 
 ${gitlab_workhorse_clone_dir}/.git:
@@ -467,8 +440,10 @@ gitlab-pages-clean-bin:
 	rm -rf gitlab-pages/bin
 
 .PHONY: gitlab-pages/bin/gitlab-pages
-gitlab-pages/bin/gitlab-pages: check-go-version ${gitlab_pages_clone_dir}/.git
-	GOPATH=${gitlab_development_root}/gitlab-pages GOBIN=${gitlab_development_root}/gitlab-pages/bin GO111MODULE=off go install gitlab.com/gitlab-org/gitlab-pages
+gitlab-pages/bin/gitlab-pages: ${gitlab_pages_clone_dir}/.git
+	mkdir -p gitlab-pages/bin
+	$(MAKE) -C ${gitlab_pages_clone_dir}
+	install -m755 ${gitlab_pages_clone_dir}/gitlab-pages gitlab-pages/bin
 
 ${gitlab_pages_clone_dir}/.git:
 	git clone --quiet --branch "${pages_version}" ${git_depth_param} ${gitlab_pages_repo} ${gitlab_pages_clone_dir}
@@ -578,7 +553,7 @@ gitlab-elasticsearch-indexer/.git:
 	git clone --quiet --branch "${gitlab_elasticsearch_indexer_version}" ${git_depth_param} ${gitlab_elasticsearch_indexer_repo} gitlab-elasticsearch-indexer
 
 .PHONY: gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer
-gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer: check-go-version gitlab-elasticsearch-indexer/.git
+gitlab-elasticsearch-indexer/bin/gitlab-elasticsearch-indexer: gitlab-elasticsearch-indexer/.git
 	$(MAKE) -C gitlab-elasticsearch-indexer build
 
 .PHONY: gitlab-elasticsearch-indexer/.git/pull
@@ -592,17 +567,6 @@ object-storage-setup: minio/data/lfs-objects minio/data/artifacts minio/data/upl
 
 minio/data/%:
 	mkdir -p $@
-
-pry:
-	grep '^#rails-web:' Procfile || (printf ',s/^rails-web/#rails-web/\nwq\n' | ed -s Procfile)
-	@echo ""
-	@echo "Commented out 'rails-web' line in the Procfile. Use 'make pry-off' to reverse."
-	@echo "You can now use Pry for debugging by using 'gdk run' in one terminal, and 'gdk run thin' in another."
-
-pry-off:
-	grep '^rails-web:' Procfile || (printf ',s/^#rails-web/rails-web/\nwq\n' | ed -s Procfile)
-	@echo ""
-	@echo "Re-enabled 'rails-web' in the Procfile. Debugging with Pry will no longer work."
 
 ifeq ($(jaeger_server_enabled),true)
 .PHONY: jaeger-setup
@@ -670,11 +634,11 @@ unlock-dependency-installers:
 	.gitlab-yarn \
 	.gettext \
 
-.PHONY: verify
-verify: verify-editorconfig
+.PHONY:
+static-analysis: static-analysis-editorconfig
 
-.PHONY: verify-editorconfig
-verify-editorconfig: install-eclint
+.PHONY: static-analysis-editorconfig
+static-analysis-editorconfig: install-eclint
 	eclint check $$(git ls-files) || (echo "editorconfig check failed. Please run \`make correct\`" && exit 1)
 
 .PHONY: correct

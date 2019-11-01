@@ -2,40 +2,44 @@
 require 'socket'
 require 'fileutils'
 
+require_relative '../lib/gdk/config'
+
 LOG_FILE = 'bootstrap-rails.log'.freeze
 
 def main
   success = true
+
   begin
     FileUtils.rm_f(LOG_FILE)
 
-    log_options = { out: [LOG_FILE, 'a'], err: %i[child out] }
-    foreman_pids = [
-      spawn('./run', 'db', log_options),
-      spawn('./run', 'gitaly', log_options)
-    ]
+    services = ['rails-migration-dependencies']
 
-    try_connect_gitaly!
+    git_data_service = config.praefect? ? 'praefect' : 'gitaly'
 
+    services << git_data_service
+
+    system('gdk', 'start', *services)
+
+    try_connect!(git_data_service)
     [
       %w[support/wait-postgresql-ready support/exec-cd gitlab bundle exec rake db:create],
       %w[support/exec-cd gitlab bundle exec rake dev:setup]
     ].each do |cmd|
       success &&= system({ 'force' => 'yes', 'BOOTSTRAP' => '1' }, *cmd)
     end
-  ensure
-    foreman_pids.each { |pid| Process.kill('TERM', pid) }
   end
-
-  foreman_pids.each { |pid| Process.wait(pid) }
 
   exit true if success
 
   abort "#{$PROGRAM_NAME} failed"
 end
 
-def try_connect_gitaly!
-  print 'Waiting for Gitaly to boot'
+def config
+  @config ||= GDK::Config.new
+end
+
+def try_connect!(service)
+  print "Waiting for #{service} to boot"
 
   sleep_time = 0.1
   repeats = 100
@@ -45,7 +49,7 @@ def try_connect_gitaly!
     print '.'
 
     begin
-      UNIXSocket.new('gitaly.socket').close
+      UNIXSocket.new("#{service}.socket").close
       puts ' OK'
 
       return
@@ -53,9 +57,9 @@ def try_connect_gitaly!
     end
   end
 
-  puts " failed to connect to gitaly after #{repeats * sleep_time}s"
+  puts " failed to connect to #{service} after #{repeats * sleep_time}s"
   puts
-  system('grep', 'gitaly\.1', LOG_FILE)
+  system('grep', "#{service}\.1", LOG_FILE)
 
   abort
 end

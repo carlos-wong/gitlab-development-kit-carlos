@@ -4,7 +4,10 @@ $LOAD_PATH.unshift('.')
 
 require 'fileutils'
 require 'lib/gdk'
+require 'lib/git/configure'
 require 'rake/clean'
+
+Rake.add_rakelib 'lib/tasks'
 
 CONFIGS = FileList['Procfile', 'nginx/conf/nginx.conf', 'gitlab/config/gitlab.yml']
 CLOBBER.include *CONFIGS, 'gdk.example.yml'
@@ -20,9 +23,9 @@ end
 
 desc 'Generate an example config file with all the defaults'
 file 'gdk.example.yml' => 'clobber:gdk.example.yml' do |t|
-  File.open(t.name, File::CREAT|File::TRUNC|File::WRONLY) do |file|
+  File.open(t.name, File::CREAT | File::TRUNC | File::WRONLY) do |file|
     config = Class.new(GDK::Config)
-    config.define_method(:gdk_root) { '/home/git/gdk' }
+    config.define_method(:gdk_root) { Pathname.new('/home/git/gdk') }
     config.define_method(:username) { 'git' }
     config.define_method(:read!) { |_| nil }
 
@@ -40,19 +43,32 @@ task 'clobber:gdk.example.yml' do |t|
   Rake::Cleaner.cleanup_files([t.name])
 end
 
+file GDK::Config::FILE do |t|
+  FileUtils.touch(t.name)
+end
+
 desc 'Generate Procfile for Foreman'
 file 'Procfile' => ['Procfile.erb', GDK::Config::FILE] do |t|
-  GDK::ErbRenderer.new(t.source, t.name).safe_render!
+  GDK::ErbRenderer.new(t.source, t.name, config: config).safe_render!
+end
+
+namespace :git do
+  desc 'Configure your Git with recommended settings'
+  task :configure, :global do |_t, args|
+    global = args[:global] == "true"
+
+    Git::Configure.new(global: global).run!
+  end
 end
 
 desc 'Generate nginx configuration'
 file 'nginx/conf/nginx.conf' => ['nginx/conf/nginx.conf.erb', GDK::Config::FILE] do |t|
-  GDK::ErbRenderer.new(t.source, t.name).safe_render!
+  GDK::ErbRenderer.new(t.source, t.name, config: config).safe_render!
 end
 
 desc 'Generate the gitlab.yml config file'
 file 'gitlab/config/gitlab.yml' => ['support/templates/gitlab.yml.erb'] do |t|
-  GDK::ErbRenderer.new(t.source, t.name).render!
+  GDK::ErbRenderer.new(t.source, t.name, config: config).render!
 end
 
 desc "Generate gitaly config toml"
@@ -60,51 +76,52 @@ file "gitaly/gitaly.config.toml" => ['support/templates/gitaly.config.toml.erb']
   GDK::ErbRenderer.new(
     t.source,
     t.name,
+    config: config,
     path: config.repositories_root,
     storage: 'default',
-    socket_path: config.gitaly.address
+    socket_path: config.gitaly.address,
+    log_dir: config.gitaly.log_dir,
+    internal_socket_dir: config.gitaly.internal_socket_dir
   ).render!
   FileUtils.mkdir_p(config.repositories_root)
+  FileUtils.mkdir_p(config.gitaly.log_dir)
 end
 
 file 'gitaly/praefect.config.toml' => ['support/templates/praefect.config.toml.erb'] do |t|
-  GDK::ErbRenderer.new(t.source, t.name).render!
+  GDK::ErbRenderer.new(t.source, t.name, config: config).render!
+
+  config.praefect.nodes.each_with_index do |node, index|
+    Rake::Task[node['config_file']].invoke
+  end
+
+  FileUtils.mkdir_p(config.praefect.internal_socket_dir)
 end
 
-config.praefect.nodes.each_with_index do |node, index|
-  desc "Generate gitaly config #{index} toml"
-  file "gitaly/gitaly-#{index}.praefect.toml" => ['support/templates/gitaly.config.toml.erb'] do |t|
+config.praefect.nodes.each do |node|
+  desc "Generate gitaly config for #{node['storage']}"
+  file node['config_file'] => ['support/templates/gitaly.config.toml.erb'] do |t|
     GDK::ErbRenderer.new(
       t.source,
       t.name,
-      path: File.join(config.repositories_root, node[:storage]),
-      storage: node[:storage],
-      socket_path: node[:address]).render!
+      config: config,
+      path: node['storage_dir'],
+      storage: node['storage'],
+      log_dir: node['log_dir'],
+      socket_path: node['address'],
+      internal_socket_dir: config.praefect.internal_socket_dir
+    ).render!
+    FileUtils.mkdir_p(node['storage_dir'])
+    FileUtils.mkdir_p(node['log_dir'])
   end
-  FileUtils.mkdir_p(File.join(config.repositories_root, "praefect-internal-#{index}"))
 end
 
-namespace :praefect do
-  PRAEFECT_ENABLED_PATH = 'praefect_enabled'
+desc 'Preflight checks for dependencies'
+task 'preflight-checks' do
+  checker = GDK::Dependencies::Checker.new
+  checker.check_all
 
-  desc 'Generate praefect configs'
-  task :configs do
-    Rake::Task['gitaly/praefect.config.toml'].invoke
-    config.praefect.nodes.each_with_index do |node, index|
-      Rake::Task["gitaly/gitaly-#{index}.praefect.toml"].invoke
-    end
-  end
-
-  desc 'Enable praefect and configure it to run'
-  task :enable => 'gitaly/praefect.config.toml' do
-    File.write(PRAEFECT_ENABLED_PATH, 'true')
-    Rake::Task['praefect:configs'].invoke
-    Rake::Task['reconfigure'].invoke
-  end
-
-  desc 'Disable praefect and do not run it'
-  task :disable do
-    File.delete(PRAEFECT_ENABLED_PATH)
-    Rake::Task['reconfigure'].invoke
+  if !checker.error_messages.empty?
+    warn checker.error_messages
+    exit 1
   end
 end

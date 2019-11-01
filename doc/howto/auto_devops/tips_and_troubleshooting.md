@@ -13,7 +13,7 @@
 
 - Consider adding `require 'pry'; binding.pry` breakpoint before [the last
 assertion about
-builds](https://gitlab.com/gitlab-org/gitlab-ce/blob/eb146e9abe08c3991b5a54237c24d15312c70ee8/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L61)
+builds](https://gitlab.com/gitlab-org/gitlab-foss/blob/eb146e9abe08c3991b5a54237c24d15312c70ee8/qa/qa/specs/features/browser_ui/7_configure/auto_devops/create_project_with_auto_devops_spec.rb#L61)
 to save yourself from setting up a full working Auto DevOps project.
 
 - Set the environment variable `CHROME_REUSE_PROFILE` to `true` which
@@ -142,7 +142,7 @@ After following the steps indicated in the [autodevops guide](../auto_devops.md)
 ```bash
 # Tunneling
 #
-tunnel_gitlab: ssh -N -R [PORT]:localhost:$port -o ControlPath=none -o ControlMaster=no qa-tunnel.gitlab.info
+tunnel_gitlab: ssh -N -R [PORT]:localhost:3333 -o ControlPath=none -o ControlMaster=no qa-tunnel.gitlab.info
 tunnel_registry: ssh -N -R [PORT]:localhost:5000 -o ControlPath=none -o ControlMaster=no qa-tunnel.gitlab.info
 ```
 

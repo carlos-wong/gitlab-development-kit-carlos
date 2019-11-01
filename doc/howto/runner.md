@@ -55,7 +55,7 @@ The right one to use depends on your network, and may change from time to time,
 but an address like `10.x.x.x`, `172.16.x.x` or `192.168.x.x` is normally the
 right one.
 
-Now run GDK: `gdk run`. Navigate to `http://<ip>:3000/gitlab-org/gitlab-test`.
+Now run GDK: `gdk start`. Navigate to `http://<ip>:3000/gitlab-org/gitlab-test`.
 If the URL doesn't work, repeat the last step and pick a different IP.
 
 Once there, ensure that the HTTP clone URL is `http://<ip>:3000/gitlab-org/gitlab-test.git`.
@@ -84,8 +84,25 @@ All the methods should (eventually) create a `gitlab-runner` binary.
 ## Setting up the Runner
 
 Run `gitlab-runner register --run-untagged --config <path-to-gdk>/gitlab-runner-config.toml`
-(as your normal user), and follow the prompts. Use `http://localhost:3000/`
-for the coordinator URL, and the `Registration token` as the `gitlab-ci token`.
+(as your normal user), and follow the prompts. Use:
+
+- **coordinator URL**
+
+  Use either:
+
+  - `http://localhost:3000/`
+  - `http://<custom_IP_address>:3000/`, if you customized your IP address using
+    [Advanced Configuration](#advanced-configuration).
+- **gitlab-ci token**
+
+  `Registration token` (copied from `admin/runners`)
+- **gitlab-ci description** (optional)
+
+  A description of the Runner. Defaults to the hostname of the machine.
+- **gitlab-ci tags** (optional)
+
+  Comma-separated tags. Jobs can be set up to use only Runners with specific tags.
+
 The Runner will write its configuration file to `gitlab-runner-config.toml`,
 which is in GDK's `.gitignore` file.
 

@@ -3,7 +3,9 @@
 socket_path = "<%= socket_path %>"
 
 # The directory where Gitaly's executables are stored
-bin_dir = "<%= File.join(config.gdk_root, 'gitaly', 'bin') %>"
+bin_dir = "<%= config.gdk_root.join('gitaly', 'bin') %>"
+
+internal_socket_dir = "<%= internal_socket_dir %>"
 
 # # Optional: listen on a TCP socket. This is insecure (no authentication)
 # listen_addr = "localhost:9999"
@@ -22,7 +24,7 @@ bin_dir = "<%= File.join(config.gdk_root, 'gitaly', 'bin') %>"
 # key_path = '/home/git/key.pem'
 
 # # Git settings
-# [git]
+[git]
 bin_path = "<%= config.git.bin %>"
 catfile_cache_size = 10
 
@@ -45,11 +47,12 @@ path = "<%= path %>"
 
 # # You can optionally configure Gitaly to output JSON-formatted log messages to stdout
 # [logging]
-# format = "json"
 # # Optional: Set log level to only log entries with that severity or above
 # # One of, in order: debug, info, warn, errror, fatal, panic
 # # Defaults to "info"
-level = "warn"
+level = "info"
+format = "json"
+dir = "<%= log_dir %>"
 
 # # Additionally exceptions from the Go server can be reported to Sentry
 # sentry_dsn = "https://<key>:<secret>@sentry.io/<project>"
@@ -62,7 +65,7 @@ level = "warn"
 
 [gitaly-ruby]
 # The directory where gitaly-ruby is installed
-dir = "<%= File.join(config.gdk_root, 'gitaly', 'ruby') %>"
+dir = "<%= config.gdk_root.join('gitaly', 'ruby') %>"
 
 # # Gitaly-ruby resident set size (RSS) that triggers a memory restart (bytes)
 # max_rss = 200000000
@@ -78,7 +81,7 @@ dir = "<%= File.join(config.gdk_root, 'gitaly', 'ruby') %>"
 
 [gitlab-shell]
 # The directory where gitlab-shell is installed
-dir = "<%= File.join(config.gdk_root, 'gitlab-shell') %>"
+dir = "<%= config.gdk_root.join('gitlab-shell') %>"
 
 # # You can adjust the concurrency of each RPC endpoint
 # [[concurrency]]

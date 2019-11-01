@@ -11,7 +11,7 @@ Read on for installation instructions or skip to
 GitLab Development Kit (GDK) provides a collection of scripts and
 other resources to install and manage a GitLab installation for
 development purposes. The source code of GitLab is spread over
-multiple repositories and it requires Ruby, Go, Postgres/MySQL, Redis
+multiple repositories and it requires Ruby, Go, Postgres, Redis
 and more to run. GDK helps you install and configure all these
 different components, and start/stop them when you work on GitLab.
 
@@ -38,9 +38,9 @@ please see the [instructions for using Vagrant with VirtualBox or Docker](doc/va
 You can also install GDK on [Minikube](https://github.com/kubernetes/minikube),
 see [kubernetes docs](doc/kubernetes.md).
 
-After installation [learn how to use GDK](doc/howto/README.md)
+After installation, [learn how to use GDK](doc/howto/README.md).
 
-If you have an old installation [update your existing GDK installation](doc/update-gdk.md)
+If you have an old installation, [update your existing GDK installation](doc/update-gdk.md).
 
 ## Design goals
 
@@ -66,9 +66,9 @@ is available on the [architecture components list](https://docs.gitlab.com/ee/de
   loaded
 - No unified configuration management for GitLab and gitlab-shell
   (handled by Omnibus)
-- No privilege separation between Ruby, Postgres and Redis
+- No privilege separation between Ruby, Postgres, and Redis
 - No easy upgrades
-- Need to download and compile new gems ('bundle install') on each upgrade
+- Need to download and compile new gems (`bundle install`) on each upgrade
 
 ## License
 

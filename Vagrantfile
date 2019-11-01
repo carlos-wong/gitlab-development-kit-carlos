@@ -4,10 +4,6 @@
 # Please see the Vagrant section in the docs for caveats and tips
 # https://gitlab.com/gitlab-org/gitlab-development-kit/blob/master/doc/vagrant.md
 
-# Write a file so the rest of the code knows we're inside a vm
-require 'fileutils'
-FileUtils.touch('.vagrant_enabled')
-
 Vagrant.require_version ">= 1.6.0"
 VAGRANTFILE_API_VERSION = "2".freeze
 
@@ -32,7 +28,7 @@ if Vagrant::Util::Platform.windows? && !running_in_admin_mode?
   raise Vagrant::Errors::VagrantError.new, "You must run the GitLab Vagrant from an elevated command prompt"
 end
 
-required_plugins = %w[vagrant-share]
+required_plugins = %w[vagrant-share vagrant-disksize]
 required_plugins_non_windows = %w[facter]
 required_plugins_windows = %w[] # %w(vagrant-winnfsd) if https://github.com/GM-Alex/vagrant-winnfsd/issues/50 gets fixed
 
@@ -56,12 +52,13 @@ $apt_reqs = <<EOT
   apt-add-repository -y ppa:rael-gc/rvm
   apt-add-repository -y ppa:ubuntu-lxc/lxd-stable
   add-apt-repository -y ppa:longsleep/golang-backports
+  add-apt-repository -y ppa:git-core/ppa
   wget -qO- https://deb.nodesource.com/setup_12.x | bash -
   wget -qO- https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
   echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
   export DEBIAN_FRONTEND=noninteractive
   export RUNLEVEL=1
-  apt-get update && apt-get -y install git postgresql postgresql-contrib libpq-dev redis-server libicu-dev cmake g++ nodejs libkrb5-dev curl ruby ed golang-go nginx libgmp-dev rvm yarn libre2-dev docker.io
+  apt-get update && apt-get -y install git postgresql postgresql-contrib libpq-dev redis-server libicu-dev cmake g++ nodejs libkrb5-dev curl ruby ed golang-go nginx libgmp-dev rvm yarn libre2-dev docker.io runit
   apt-get update && apt-get -y upgrade
 EOT
 
