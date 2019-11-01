@@ -243,7 +243,7 @@ self-update: unlock-dependency-installers
 
 # Update gitlab, gitlab-shell, gitlab-workhorse, gitlab-pages and gitaly
 # Pull gitlab directory first since dependencies are linked from there.
-update: ensure-postgres-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-update gitlab-elasticsearch-indexer-update
+update: ensure-postgres-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-elasticsearch-indexer-update
 
 ensure-postgres-running:
 	@test -f ${postgres_data_dir}/postmaster.pid || \
