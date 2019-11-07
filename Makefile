@@ -4,8 +4,6 @@
 
 gitlab_clone_dir = gitlab
 gitlab_repo = https://github.com/carlos-wong/gitlab-ce-carlos.git
-gitlab_repo_base = $(basename ${gitlab_repo})
-gitlab_repo_ruby_version = $(shell curl -s "${gitlab_repo_base}/raw/master/.ruby-version")
 gitlab_shell_repo = https://gitlab.com/gitlab-org/gitlab-shell.git
 gitlab_shell_clone_dir = go-gitlab-shell/src/gitlab.com/gitlab-org/gitlab-shell
 gitlab_workhorse_repo = https://gitlab.com/gitlab-org/gitlab-workhorse.git
@@ -223,7 +221,7 @@ self-update: unlock-dependency-installers
 
 # Update gitlab, gitlab-shell, gitlab-workhorse, gitlab-pages and gitaly
 # Pull gitlab directory first since dependencies are linked from there.
-update: stop-foreman ensure-databases-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-elasticsearch-indexer-update
+update: stop-foreman ensure-databases-running unlock-dependency-installers gitlab/.git/pull gitlab-shell-update gitlab-workhorse-update gitlab-pages-update gitaly-update gitlab-update gitlab-elasticsearch-indexer-update
 
 stop-foreman:
 	@pkill foreman || true
@@ -242,7 +240,7 @@ gitlab/.git/pull:
 		git checkout -- Gemfile.lock db/schema.rb && \
 		git stash && \
 		git checkout master && \
-		git pull --ff-only origin master
+		git pull --ff-only
 
 gitlab-shell/.git/pull:
 	cd ${gitlab_development_root}/gitlab-shell && \

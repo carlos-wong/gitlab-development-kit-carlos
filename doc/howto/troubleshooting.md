@@ -128,12 +128,12 @@ Make sure that `gem install pg -v '0.18.4'` succeeds before bundling.
 
 This is because the script fails to find the PostgreSQL instance in the path.
 The instructions for this may show up after installing PostgreSQL.
-The example below is from running `brew install postgresql@9.6` on OS X installation.
+The example below is from running `brew install postgresql@10` on OS X installation.
 For other versions, other platform install and other shell terminal please adjust the path accordingly.
 
 ```
 If you need to have this software first in your PATH run:
-  echo 'export PATH="/usr/local/opt/postgresql@9.6/bin:$PATH"' >> ~/.bash_profile
+  echo 'export PATH="/usr/local/opt/postgresql@10/bin:$PATH"' >> ~/.bash_profile
 ```
 
 Once this is set, run the `gdk install` command again.
@@ -167,10 +167,10 @@ version of Postgres:
 If things are working, you may remove the `postgresql/data.old` directory
 completely.
 
-## Rails cannot connect to Postgres
+## Rails cannot connect to PostgreSQL
 
-- Check if foreman is running in the gitlab-development-kit directory.
-- Check for custom Postgres connection settings defined via the environment; we
+- Use `gdk status` to see if `postgresql` is running.
+- Check for custom PostgreSQL connection settings defined via the environment; we
   assume none such variables are set. Look for them with `set | grep '^PG'`.
 
 ## undefined symbol: SSLv2_method
@@ -486,29 +486,6 @@ but are present in your database, you might want to remove them.
 
 You can now run `rake db:migrate:status` again to verify that the entries are
 deleted from the database.
-
-## Foreman fails to start
-
-Foreman will fail to start if the `Thor` gem version installed is `0.19.3`
-(a foreman dependency), the stacktrace will be:
-
-```
-gems/2.3.0/gems/thor-0.19.2/lib/thor/base.rb:534:in `thor_reserved_word?': "run" is a Thor reserved word and cannot be defined as command (RuntimeError)
-    from gems/2.3.0/gems/thor-0.19.2/lib/thor/base.rb:597:in `method_added'
-    from gems/2.3.0/gems/foreman-0.82.0/lib/foreman/cli.rb:80:in `<class:CLI>'
-    from gems/2.3.0/gems/foreman-0.82.0/lib/foreman/cli.rb:11:in `<top (required)>'
-    from 2.3.0/rubygems/core_ext/kernel_require.rb:68:in `require'
-    from 2.3.0/rubygems/core_ext/kernel_require.rb:68:in `require'
-    from gems/2.3.0/gems/foreman-0.82.0/bin/foreman:5:in `<top (required)>'
-    from /.../bin/foreman:23:in `load'
-    from /.../bin/foreman:23:in `<main>'
-```
-
-You can fix this by updating the `Thor` gem.
-
-```
-gem update thor
-```
 
 ## Webpack
 
